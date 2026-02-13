@@ -30,8 +30,8 @@ export async function getPayrollData(
   if (!records || records.length === 0) return [];
 
   // 3. Get employees and branches
-  const empIds = [...new Set(records.map((r: any) => r.employee_id))];
-  const branchIds = [...new Set(records.map((r: any) => r.branch_id))];
+  const empIds = Array.from(new Set(records.map((r: any) => r.employee_id)));
+   const branchIds = Array.from(new Set(records.map((r: any) => r.branch_id)));
 
   const [{ data: employees }, { data: branches }] = await Promise.all([
     supabase.from("employees").select("id, full_name, position").in("id", empIds),
