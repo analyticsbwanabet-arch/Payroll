@@ -6,6 +6,7 @@ const navItems = [
   { href: "/", label: "Overview", icon: "📊" },
   { href: "/branches", label: "Branches", icon: "🏢" },
   { href: "/employees", label: "Employees", icon: "👥" },
+  { href: "/daily", label: "Daily Log", icon: "📝" },
 ];
 
 export default function Nav() {
