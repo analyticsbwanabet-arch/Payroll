@@ -4,17 +4,14 @@ import { useState } from "react";
 import type { PayrollRecord } from "@/lib/helpers";
 import { fmt, posLabel, shortBranch } from "@/lib/helpers";
 
-const COLORS = ["#16a34a", "#eab308", "#22c55e", "#f59e0b", "#06b6d4", "#8b5cf6"];
+const COLORS = ["#22c55e", "#facc15", "#4ade80", "#fbbf24", "#22d3ee", "#a78bfa"];
 
 function badge(position: string) {
   const cls =
-    position === "manager" || position === "assistant_manager"
-      ? "badge-manager"
-      : position === "it_technician"
-      ? "badge-it"
-      : position === "security"
-      ? "badge-security"
-      : "badge-default";
+    position === "manager" || position === "assistant_manager" ? "badge-manager"
+    : position === "it_technician" ? "badge-it"
+    : position === "security" ? "badge-security"
+    : "badge-default";
   return <span className={`badge ${cls}`}>{posLabel[position] || position}</span>;
 }
 
@@ -61,23 +58,21 @@ export default function EmployeeTable({
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "#eab308" }}>
+          <h1 className="text-xl font-bold" style={{ color: "#facc15" }}>
             {branch ? branch : "All Employees"} — {filtered.length} staff
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: "#4a6e4a" }}>January 2026 payroll • Click headers to sort</p>
+          <p className="text-[13px] mt-1" style={{ color: "#636363" }}>January 2026 payroll • Click headers to sort</p>
         </div>
         <div className="flex gap-2 items-center">
           <input type="text" placeholder="Search name or role..." value={search} onChange={(e) => setSearch(e.target.value)}
-            className="px-3.5 py-2 rounded-lg text-[13px] w-52 outline-none transition-colors"
-            style={{ border: "1px solid #1a2e1a", background: "#0a1a0a", color: "#e8f5e8" }} />
+            className="px-3.5 py-2 rounded-lg text-[13px] w-52 outline-none"
+            style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }} />
           {branch && <button onClick={() => setBranch(null)} className="chip">✕ Clear</button>}
         </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setBranch(null)} className={`chip ${!branch ? "chip-active" : ""}`}>
-          All ({records.length})
-        </button>
+        <button onClick={() => setBranch(null)} className={`chip ${!branch ? "chip-active" : ""}`}>All ({records.length})</button>
         {branchNames.map((b, i) => (
           <button key={b.name} onClick={() => setBranch(b.name)} className="chip"
             style={branch === b.name ? { borderColor: COLORS[i % COLORS.length], background: COLORS[i % COLORS.length] + "22", color: COLORS[i % COLORS.length] } : undefined}>
@@ -93,7 +88,7 @@ export default function EmployeeTable({
               {columns.map((col) => (
                 <th key={col.key} onClick={() => handleSort(col.key)}
                   className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-semibold border-b cursor-pointer select-none whitespace-nowrap"
-                  style={{ textAlign: col.align, color: sortCol === col.key ? "#eab308" : "#4a6e4a", borderColor: "#1a2e1a" }}>
+                  style={{ textAlign: col.align, color: sortCol === col.key ? "#facc15" : "#636363", borderColor: "#2a2a2a" }}>
                   {col.label}{sortCol === col.key ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
                 </th>
               ))}
@@ -102,27 +97,27 @@ export default function EmployeeTable({
           <tbody>
             {filtered.map((emp, i) => (
               <tr key={i} className="row-hover transition-colors">
-                <td className="px-3 py-3 font-semibold text-[13px] whitespace-nowrap" style={{ color: "#e8f5e8" }}>{emp.full_name}</td>
-                <td className="px-3 py-3 text-[12px]" style={{ color: "#86a886" }}>{shortBranch(emp.branch_name)}</td>
+                <td className="px-3 py-3 font-semibold text-[13px] whitespace-nowrap" style={{ color: "#f5f5f5" }}>{emp.full_name}</td>
+                <td className="px-3 py-3 text-[12px]" style={{ color: "#a3a3a3" }}>{shortBranch(emp.branch_name)}</td>
                 <td className="px-3 py-3">{badge(emp.position)}</td>
-                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: "#e8f5e8" }}>{fmt(emp.gross_salary)}</td>
-                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: "#86a886" }}>{fmt(emp.napsa_employee)}</td>
-                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: "#86a886" }}>{fmt(emp.nhima_employee)}</td>
-                <td className="px-3 py-3 text-right text-[12px]" style={{ color: emp.extra_shifts_count > 0 ? "#06b6d4" : "#4a6e4a" }}>
+                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: "#f5f5f5" }}>{fmt(emp.gross_salary)}</td>
+                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: "#a3a3a3" }}>{fmt(emp.napsa_employee)}</td>
+                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: "#a3a3a3" }}>{fmt(emp.nhima_employee)}</td>
+                <td className="px-3 py-3 text-right text-[12px]" style={{ color: emp.extra_shifts_count > 0 ? "#22d3ee" : "#636363" }}>
                   {emp.extra_shifts_count > 0 ? emp.extra_shifts_count : "—"}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: emp.shortage_amount > 0 ? "#ef4444" : "#4a6e4a" }}>
+                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: emp.shortage_amount > 0 ? "#f87171" : "#636363" }}>
                   {emp.shortage_amount > 0 ? fmt(emp.shortage_amount) : "—"}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: emp.advances > 0 ? "#eab308" : "#4a6e4a" }}>
+                <td className="px-3 py-3 text-right font-mono text-[12px]" style={{ color: emp.advances > 0 ? "#facc15" : "#636363" }}>
                   {emp.advances > 0 ? fmt(emp.advances) : "—"}
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-[12px] font-bold" style={{ color: "#16a34a" }}>{fmt(emp.net_salary_due)}</td>
+                <td className="px-3 py-3 text-right font-mono text-[12px] font-bold" style={{ color: "#4ade80" }}>{fmt(emp.net_salary_due)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="text-center py-10" style={{ color: "#4a6e4a" }}>No employees match your filters</div>}
+        {filtered.length === 0 && <div className="text-center py-10" style={{ color: "#636363" }}>No employees match your filters</div>}
       </div>
     </div>
   );

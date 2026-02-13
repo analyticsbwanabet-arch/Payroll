@@ -3,24 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --bg: #050a05;
-  --card: #0a1a0a;
-  --card-hover: #112211;
-  --border: #1a2e1a;
-  --accent: #eab308;
-  --accent-dim: #713f12;
-  --green: #16a34a;
-  --green-bright: #22c55e;
-  --green-dim: #0a5c2a;
-  --red: #ef4444;
-  --blue: #3b82f6;
-  --purple: #8b5cf6;
-  --cyan: #06b6d4;
-  --gold: #eab308;
-  --gold-dim: #92700e;
-  --text: #e8f5e8;
-  --text-dim: #86a886;
-  --text-muted: #4a6e4a;
+  --bg: #0a0a0a;
+  --card: #141414;
+  --card-hover: #1c1c1c;
+  --border: #2a2a2a;
+  --accent: #facc15;
+  --accent-dim: #a16207;
+  --green: #22c55e;
+  --green-bright: #4ade80;
+  --green-dim: #166534;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --cyan: #22d3ee;
+  --yellow: #facc15;
+  --yellow-dim: #854d0e;
+  --text: #f5f5f5;
+  --text-dim: #a3a3a3;
+  --text-muted: #636363;
 }
 
 body {
@@ -50,7 +50,7 @@ body {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  opacity: 0.1;
+  opacity: 0.12;
 }
 
 .badge {
@@ -60,10 +60,10 @@ body {
   font-weight: 600;
   white-space: nowrap;
 }
-.badge-manager { background: #713f12; color: var(--gold); }
-.badge-it { background: #1e3a5f; color: var(--blue); }
-.badge-security { background: #3b1f2b; color: var(--red); }
-.badge-default { background: #0a3a1a; color: var(--green-bright); }
+.badge-manager { background: #422006; color: #facc15; }
+.badge-it { background: #1e3a5f; color: #60a5fa; }
+.badge-security { background: #3b1f2b; color: #f87171; }
+.badge-default { background: #052e16; color: #4ade80; }
 
 .chart-card {
   background: var(--card);
@@ -85,7 +85,7 @@ body {
 }
 .chip:hover { border-color: var(--text-dim); color: var(--text-dim); }
 .chip-active {
-  border-color: var(--gold);
-  background: var(--gold-dim);
-  color: var(--gold);
+  border-color: var(--yellow);
+  background: #422006;
+  color: var(--yellow);
 }
