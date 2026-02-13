@@ -31,12 +31,6 @@ const fmt = (n: number) =>
   `K${n.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Brand colors
-const GREEN = [22, 163, 74];     // #16a34a
-const GOLD = [234, 179, 8];      // #eab308
-const DARK = [5, 10, 5];         // #050a05
-const CARD = [10, 26, 10];       // #0a1a0a
-const TEXT = [232, 245, 232];     // #e8f5e8
-const DIM = [74, 110, 74];       // #4a6e4a
 
 export function generatePayslipPDF(data: PayslipData): jsPDF {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -71,31 +65,31 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   doc.rect(0, 0, w, 44, "F");
 
   // Gold accent line
-  doc.setFillColor(...GOLD);
+  doc.setFillColor(234, 179, 8);
   doc.rect(0, 44, w, 2.5, "F");
 
   // Green accent left edge
-  doc.setFillColor(...GREEN);
+  doc.setFillColor(22, 163, 74);
   doc.rect(0, 0, 4, 44, "F");
 
   // Company name in gold
-  doc.setTextColor(...GOLD);
+  doc.setTextColor(234, 179, 8);
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
   doc.text("BwanaBet", 15, y + 8);
 
-  doc.setTextColor(...DIM);
+  doc.setTextColor(74, 110, 74);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text("Zambia • Payroll System", 15, y + 15);
 
   // Payslip label
-  doc.setTextColor(...TEXT);
+  doc.setTextColor(232, 245, 232);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text("PAYSLIP", w - 15, y + 5, { align: "right" });
 
-  doc.setTextColor(...DIM);
+  doc.setTextColor(74, 110, 74);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(data.period_name, w - 15, y + 13, { align: "right" });
@@ -106,13 +100,13 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   // === EMPLOYEE DETAILS ===
   doc.setFillColor(15, 30, 15);
   doc.roundedRect(15, y, w - 30, 28, 3, 3, "F");
-  doc.setDrawColor(...GREEN);
+  doc.setDrawColor(22, 163, 74);
   doc.setLineWidth(0.5);
   doc.roundedRect(15, y, w - 30, 28, 3, 3, "S");
 
   const col1 = 20, col2 = w / 2 + 5;
 
-  doc.setTextColor(...DIM);
+  doc.setTextColor(74, 110, 74);
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.text("EMPLOYEE NAME", col1, y + 7);
@@ -120,22 +114,22 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   doc.text("BRANCH", col2, y + 7);
   doc.text("EMPLOYEE ID", col2, y + 19);
 
-  doc.setTextColor(...GOLD);
+  doc.setTextColor(234, 179, 8);
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text(data.employee_name, col1, y + 12.5);
 
-  doc.setTextColor(...TEXT);
+  doc.setTextColor(232, 245, 232);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(formatPosition(data.position), col1, y + 24);
 
-  doc.setTextColor(...GOLD);
+  doc.setTextColor(234, 179, 8);
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text(data.branch_name, col2, y + 12.5);
 
-  doc.setTextColor(...TEXT);
+  doc.setTextColor(232, 245, 232);
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(data.employee_id.substring(0, 8).toUpperCase(), col2, y + 24);
@@ -143,7 +137,7 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   y += 36;
 
   // === EARNINGS ===
-  doc.setTextColor(...GREEN);
+  doc.setTextColor(22, 163, 74);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text("EARNINGS", 15, y);
@@ -172,7 +166,7 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // === STATUTORY DEDUCTIONS ===
-  doc.setTextColor(...GOLD);
+  doc.setTextColor(234, 179, 8);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text("STATUTORY DEDUCTIONS", 15, y);
@@ -238,16 +232,16 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   // === NET PAY BOX ===
   doc.setFillColor(5, 15, 5);
   doc.roundedRect(15, y, w - 30, 24, 3, 3, "F");
-  doc.setFillColor(...GREEN);
+  doc.setFillColor(22, 163, 74);
   doc.roundedRect(15, y, 5, 24, 2, 0, "F");
   doc.rect(18, y, 2, 24, "F");
 
-  doc.setTextColor(...DIM);
+  doc.setTextColor(74, 110, 74);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("NET SALARY DUE", 27, y + 10);
 
-  doc.setTextColor(...GREEN);
+  doc.setTextColor(22, 163, 74);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
   doc.text(fmt(data.net_salary_due), w - 20, y + 15.5, { align: "right" });
@@ -256,7 +250,7 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
 
   // Comments
   if (data.comments) {
-    doc.setTextColor(...DIM);
+    doc.setTextColor(74, 110, 74);
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
     doc.text("COMMENTS", 15, y);
@@ -270,7 +264,7 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   doc.setLineWidth(0.3);
   doc.line(15, footerY, w - 15, footerY);
 
-  doc.setTextColor(...DIM);
+  doc.setTextColor(74, 110, 74);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text("This is a computer-generated payslip and does not require a signature.", 15, footerY + 5);
