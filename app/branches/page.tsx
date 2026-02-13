@@ -4,7 +4,7 @@ import { buildBranchSummary, sumTotals, fmt } from "@/lib/helpers";
 
 export const revalidate = 60;
 
-const PIE_COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#06b6d4", "#ef4444"];
+const COLORS = ["#16a34a", "#eab308", "#22c55e", "#f59e0b", "#06b6d4", "#8b5cf6"];
 
 export default async function BranchesPage() {
   const records = await getPayrollData();
@@ -16,8 +16,8 @@ export default async function BranchesPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold">Branch Payroll Summary</h1>
-        <p className="text-[13px] text-[--text-muted] mt-1">January 2026 — Click a row to view that branch&apos;s employees</p>
+        <h1 className="text-xl font-bold" style={{ color: "#eab308" }}>Branch Payroll Summary</h1>
+        <p className="text-[13px] mt-1" style={{ color: "#4a6e4a" }}>January 2026 — Click a row to view that branch&apos;s employees</p>
       </div>
 
       <div className="chart-card overflow-x-auto">
@@ -25,33 +25,32 @@ export default async function BranchesPage() {
           <thead>
             <tr>
               {headers.map((h) => (
-                <th key={h} className="px-4 py-2.5 text-[10px] uppercase tracking-wider font-semibold text-[--text-muted] border-b border-[--border]"
-                  style={{ textAlign: h === "Branch" ? "left" : "right" }}>{h}</th>
+                <th key={h} className="px-4 py-2.5 text-[10px] uppercase tracking-wider font-semibold border-b"
+                  style={{ textAlign: h === "Branch" ? "left" : "right", color: "#4a6e4a", borderColor: "#1a2e1a" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {branches.map((row, i) => (
               <tr key={i} className="row-hover cursor-pointer transition-colors">
-                <td className="px-4 py-3.5 font-semibold text-[--text]">
+                <td className="px-4 py-3.5 font-semibold" style={{ color: "#e8f5e8" }}>
                   <Link href={`/employees?branch=${encodeURIComponent(row.branch)}`} className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
                     {row.branch}
                   </Link>
                 </td>
                 <Cell value={row.employees} bold />
                 <Cell value={fmt(row.gross)} />
-                <Cell value={row.extraShifts > 0 ? fmt(row.extraShifts) : "—"} color={row.extraShifts > 0 ? "var(--cyan)" : undefined} />
-                <Cell value={fmt(row.napsa + row.nhima)} color="var(--purple)" />
-                <Cell value={row.shortages > 0 ? fmt(row.shortages) : "—"} color={row.shortages > 0 ? "var(--red)" : undefined} />
-                <Cell value={row.advances > 0 ? fmt(row.advances) : "—"} color={row.advances > 0 ? "var(--accent)" : undefined} />
-                <Cell value={row.fines > 0 ? fmt(row.fines) : "—"} color={row.fines > 0 ? "var(--red)" : undefined} />
-                <Cell value={fmt(row.net)} color="var(--green)" bold />
+                <Cell value={row.extraShifts > 0 ? fmt(row.extraShifts) : "—"} color={row.extraShifts > 0 ? "#06b6d4" : undefined} />
+                <Cell value={fmt(row.napsa + row.nhima)} color="#eab308" />
+                <Cell value={row.shortages > 0 ? fmt(row.shortages) : "—"} color={row.shortages > 0 ? "#ef4444" : undefined} />
+                <Cell value={row.advances > 0 ? fmt(row.advances) : "—"} color={row.advances > 0 ? "#f59e0b" : undefined} />
+                <Cell value={row.fines > 0 ? fmt(row.fines) : "—"} color={row.fines > 0 ? "#ef4444" : undefined} />
+                <Cell value={fmt(row.net)} color="#16a34a" bold />
               </tr>
             ))}
-            {/* Totals */}
-            <tr className="border-t-2 border-[--accent]">
-              <td className="px-4 py-3.5 font-bold text-[--accent]">TOTAL</td>
+            <tr style={{ borderTop: "2px solid #16a34a" }}>
+              <td className="px-4 py-3.5 font-bold" style={{ color: "#16a34a" }}>TOTAL</td>
               <TotalCell value={totals.employees} />
               <TotalCell value={fmt(totals.gross)} />
               <TotalCell value={fmt(totals.extraShifts)} />
@@ -71,7 +70,7 @@ export default async function BranchesPage() {
 function Cell({ value, color, bold }: { value: string | number; color?: string; bold?: boolean }) {
   return (
     <td className="px-4 py-3.5 text-right font-mono text-[12px]"
-      style={{ color: color || (value === "—" ? "var(--text-muted)" : "var(--text)"), fontWeight: bold ? 700 : 400 }}>
+      style={{ color: color || (value === "—" ? "#4a6e4a" : "#e8f5e8"), fontWeight: bold ? 700 : 400 }}>
       {value}
     </td>
   );
@@ -79,6 +78,6 @@ function Cell({ value, color, bold }: { value: string | number; color?: string; 
 
 function TotalCell({ value }: { value: string | number }) {
   return (
-    <td className="px-4 py-3.5 text-right font-mono text-[12px] font-bold text-[--accent]">{value}</td>
+    <td className="px-4 py-3.5 text-right font-mono text-[12px] font-bold" style={{ color: "#16a34a" }}>{value}</td>
   );
 }

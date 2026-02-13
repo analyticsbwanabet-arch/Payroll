@@ -15,7 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="max-w-[1360px] mx-auto px-4 sm:px-7 py-6">
           {children}
         </main>
-        <footer className="max-w-[1360px] mx-auto px-7 pb-8 pt-4 border-t border-[--border] flex justify-between flex-wrap gap-2 text-[11px] text-[--text-muted]">
+        <footer className="max-w-[1360px] mx-auto px-7 pb-8 pt-4 flex justify-between flex-wrap gap-2 text-[11px]"
+          style={{ borderTop: "1px solid #1a2e1a", color: "#4a6e4a" }}>
           <span>BwanaBet Payroll System • Connected to Supabase</span>
           <span>NAPSA 5% • NHIMA 1% • PAYE 2025 Brackets • ZMW</span>
         </footer>
