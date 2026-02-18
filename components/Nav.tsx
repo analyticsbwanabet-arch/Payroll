@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import type { UserRole } from "@/lib/auth";
 
 const navItems = [
   { href: "/", label: "Overview", icon: "📊" },
@@ -11,7 +12,7 @@ const navItems = [
   { href: "/payroll", label: "Payroll", icon: "💰" },
 ];
 
-export default function Nav() {
+export default function Nav({ userRole }: { userRole: UserRole }) {
   const pathname = usePathname();
 
   return (
@@ -40,6 +41,21 @@ export default function Nav() {
           );
         })}
       </nav>
+
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <div className="text-[12px] font-medium" style={{ color: "#f5f5f5" }}>{userRole.display_name}</div>
+          <div className="text-[10px]" style={{ color: userRole.is_super_admin ? "#facc15" : "#22c55e" }}>
+            {userRole.is_super_admin ? "⭐ Super Admin" : "🏢 Branch Manager"}
+          </div>
+        </div>
+        <form action="/auth/signout" method="post">
+          <button type="submit" className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+            style={{ background: "#1c1c1c", color: "#a3a3a3", border: "1px solid #2a2a2a" }}>
+            Sign Out
+          </button>
+        </form>
+      </div>
     </header>
   );
 }

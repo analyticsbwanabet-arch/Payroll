@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { getPayrollData } from "@/lib/data";
 import { buildBranchSummary, sumTotals, fmt } from "@/lib/helpers";
+import { getCurrentUser } from "@/lib/auth";
 
 export const revalidate = 60;
 
 const COLORS = ["#22c55e", "#facc15", "#4ade80", "#fbbf24", "#22d3ee", "#a78bfa"];
 
 export default async function BranchesPage() {
-  const records = await getPayrollData();
+  const { role } = await getCurrentUser();
+  const branchFilter = role?.is_super_admin ? null : role?.branch_ids || [];
+  const records = await getPayrollData("January 2026", branchFilter);
   const branches = buildBranchSummary(records);
   const totals = sumTotals(branches);
 
@@ -17,7 +20,9 @@ export default async function BranchesPage() {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-xl font-bold" style={{ color: "#facc15" }}>Branch Payroll Summary</h1>
-        <p className="text-[13px] mt-1" style={{ color: "#636363" }}>January 2026 — Click a row to view employees</p>
+        <p className="text-[13px] mt-1" style={{ color: "#636363" }}>
+          January 2026 {!role?.is_super_admin && `• Showing ${branches.length} branch${branches.length !== 1 ? "es" : ""}`}
+        </p>
       </div>
       <div className="chart-card overflow-x-auto">
         <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 3px" }}>

@@ -1,6 +1,18 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+export interface LeaveBalance {
+  annual_accrued: number;
+  annual_used: number;
+  annual_balance: number;
+  sick_entitled: number;
+  sick_used: number;
+  sick_balance: number;
+  comp_entitled: number;
+  comp_used: number;
+  comp_balance: number;
+}
+
 export interface PayslipData {
   employee_name: string;
   employee_id: string;
@@ -25,6 +37,7 @@ export interface PayslipData {
   other_deductions: number;
   net_salary_due: number;
   comments: string | null;
+  leave?: LeaveBalance;
 }
 
 const fmt = (n: number) =>
@@ -56,19 +69,14 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   const w = doc.internal.pageSize.getWidth();
   let y = 15;
 
-  // === HEADER - Black band with yellow accent ===
+  // === HEADER ===
   doc.setFillColor(10, 10, 10);
   doc.rect(0, 0, w, 44, "F");
-
-  // Yellow accent line
   doc.setFillColor(250, 204, 21);
   doc.rect(0, 44, w, 2.5, "F");
-
-  // Green left accent
   doc.setFillColor(34, 197, 94);
   doc.rect(0, 0, 4, 44, "F");
 
-  // Company name - yellow
   doc.setTextColor(250, 204, 21);
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
@@ -79,7 +87,6 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   doc.setFont("helvetica", "normal");
   doc.text("Zambia • Payroll System", 15, y + 15);
 
-  // PAYSLIP label - white
   doc.setTextColor(245, 245, 245);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
@@ -117,13 +124,12 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(formatPosition(data.position), col1, y + 24);
-
   doc.setFontSize(8);
   doc.text(data.employee_id.substring(0, 8).toUpperCase(), col2, y + 24);
 
   y += 36;
 
-  // === EARNINGS TABLE ===
+  // === EARNINGS ===
   doc.setTextColor(34, 197, 94);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
@@ -139,17 +145,14 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   ]);
 
   (doc as any).autoTable({
-    startY: y,
-    head: [["Description", "Amount (ZMW)"]],
-    body: earningsRows,
-    theme: "plain",
+    startY: y, head: [["Description", "Amount (ZMW)"]], body: earningsRows, theme: "plain",
     margin: { left: 15, right: 15 },
     styles: { fontSize: 9, cellPadding: 3, textColor: [30, 30, 30] },
     headStyles: { fillColor: [220, 252, 231], textColor: [22, 101, 52], fontSize: 8, fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: 45, halign: "right" } },
     alternateRowStyles: { fillColor: [250, 250, 250] },
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as any).lastAutoTable.finalY + 7;
 
   // === STATUTORY ===
   doc.setTextColor(202, 138, 4);
@@ -166,17 +169,14 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   ]);
 
   (doc as any).autoTable({
-    startY: y,
-    head: [["Description", "Amount (ZMW)"]],
-    body: statRows,
-    theme: "plain",
+    startY: y, head: [["Description", "Amount (ZMW)"]], body: statRows, theme: "plain",
     margin: { left: 15, right: 15 },
     styles: { fontSize: 9, cellPadding: 3, textColor: [30, 30, 30] },
     headStyles: { fillColor: [254, 249, 195], textColor: [133, 77, 14], fontSize: 8, fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: 45, halign: "right" } },
     alternateRowStyles: { fillColor: [255, 253, 245] },
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as any).lastAutoTable.finalY + 7;
 
   // === OTHER DEDUCTIONS ===
   const hasOther = data.shortage_amount > 0 || data.advances > 0 || data.fines > 0 || data.absence_deduction > 0;
@@ -199,17 +199,14 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
     ]);
 
     (doc as any).autoTable({
-      startY: y,
-      head: [["Description", "Amount (ZMW)"]],
-      body: otherRows,
-      theme: "plain",
+      startY: y, head: [["Description", "Amount (ZMW)"]], body: otherRows, theme: "plain",
       margin: { left: 15, right: 15 },
       styles: { fontSize: 9, cellPadding: 3, textColor: [30, 30, 30] },
       headStyles: { fillColor: [254, 226, 226], textColor: [185, 28, 28], fontSize: 8, fontStyle: "bold" },
       columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: 45, halign: "right" } },
       alternateRowStyles: { fillColor: [255, 248, 248] },
     });
-    y = (doc as any).lastAutoTable.finalY + 10;
+    y = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // === NET PAY BOX ===
@@ -231,7 +228,51 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
 
   y += 32;
 
-  if (data.comments) {
+  // === LEAVE BALANCES ===
+  if (data.leave) {
+    doc.setTextColor(96, 165, 250);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("LEAVE BALANCES", 15, y);
+    y += 2;
+
+    const lv = data.leave;
+    const leaveRows = [
+      ["Annual Leave", String(lv.annual_accrued) + " days", String(lv.annual_used) + " days", String(lv.annual_balance) + " days"],
+      ["Sick Leave", String(lv.sick_entitled) + " days", String(lv.sick_used) + " days", String(lv.sick_balance) + " days"],
+      ["Compassionate", String(lv.comp_entitled) + " days", String(lv.comp_used) + " days", String(lv.comp_balance) + " days"],
+    ];
+
+    (doc as any).autoTable({
+      startY: y,
+      head: [["Leave Type", "Entitled / Accrued", "Used", "Balance"]],
+      body: leaveRows,
+      theme: "plain",
+      margin: { left: 15, right: 15 },
+      styles: { fontSize: 9, cellPadding: 3, textColor: [30, 30, 30] },
+      headStyles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontSize: 8, fontStyle: "bold" },
+      columnStyles: {
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 40, halign: "center" },
+        2: { cellWidth: 30, halign: "center" },
+        3: { cellWidth: 30, halign: "center", fontStyle: "bold" },
+      },
+      alternateRowStyles: { fillColor: [248, 250, 255] },
+      didParseCell: function(hookData: any) {
+        // Color the balance column based on value
+        if (hookData.section === "body" && hookData.column.index === 3) {
+          const val = parseFloat(hookData.cell.text[0]);
+          if (val <= 0) hookData.cell.styles.textColor = [220, 38, 38];
+          else if (val <= 3) hookData.cell.styles.textColor = [202, 138, 4];
+          else hookData.cell.styles.textColor = [22, 101, 52];
+        }
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // === COMMENTS ===
+  if (data.comments && data.comments !== "Generated from daily logs" && data.comments !== "No daily logs recorded") {
     doc.setTextColor(120, 120, 120);
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
@@ -250,7 +291,7 @@ function buildPayslipPage(doc: jsPDF, data: PayslipData) {
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text("This is a computer-generated payslip and does not require a signature.", 15, footerY + 5);
-  doc.text("BwanaBet Zambia  •  NAPSA 5%  •  NHIMA 1%  •  PAYE 2025 Brackets", 15, footerY + 9);
+  doc.text("BwanaBet Zambia  •  NAPSA 5%  •  NHIMA 1%  •  PAYE 2025 Brackets  •  Leave: 2 days/month annual, 10 sick, 5 compassionate", 15, footerY + 9);
   doc.text("Generated: " + new Date().toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" }), w - 15, footerY + 5, { align: "right" });
 }
 

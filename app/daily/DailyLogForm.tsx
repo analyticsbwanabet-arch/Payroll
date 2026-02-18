@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useAuth, supabase } from "@/lib/auth-context";
 
 interface Branch {
   id: string;
@@ -60,7 +55,9 @@ function today() {
   return new Date().toISOString().split("T")[0];
 }
 
-export default function DailyLogForm({ branches }: { branches: Branch[] }) {
+export default function DailyLogForm() {
+  const { allowedBranchIds, isSuperAdmin } = useAuth();
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [branchId, setBranchId] = useState("");
   const [logDate, setLogDate] = useState(today());
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -117,6 +114,21 @@ export default function DailyLogForm({ branches }: { branches: Branch[] }) {
     setHasChanges(false);
     setLoading(false);
   }, [branchId, logDate]);
+
+  // Load branches based on user access
+  useEffect(() => {
+    const loadBranches = async () => {
+      let query = supabase.from("branches").select("id, name").order("name");
+      if (!isSuperAdmin && allowedBranchIds && allowedBranchIds.length > 0) {
+        query = query.in("id", allowedBranchIds);
+      }
+      const { data } = await query;
+      const list = data || [];
+      setBranches(list);
+      if (list.length === 1) setBranchId(list[0].id);
+    };
+    loadBranches();
+  }, [allowedBranchIds, isSuperAdmin]);
 
   useEffect(() => {
     loadData();

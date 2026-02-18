@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useAuth, supabase } from "@/lib/auth-context";
 
 interface Period {
   id: string;
@@ -54,6 +49,17 @@ interface FullPayrollRecord {
   absence_deduction: number;
   other_deductions: number;
   comments: string | null;
+  leave?: {
+    annual_accrued: number;
+    annual_used: number;
+    annual_balance: number;
+    sick_entitled: number;
+    sick_used: number;
+    sick_balance: number;
+    comp_entitled: number;
+    comp_used: number;
+    comp_balance: number;
+  };
 }
 
 const fmt = (n: number | string) =>
@@ -63,6 +69,7 @@ const fmtDec = (n: number | string) =>
   `K${Number(n || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function PayrollGenerator({ periods }: { periods: Period[] }) {
+  const { allowedBranchIds, isSuperAdmin } = useAuth();
   const [periodId, setPeriodId] = useState("");
   const [step, setStep] = useState<"select" | "preview" | "generating" | "results">("select");
   const [summaries, setSummaries] = useState<DailySummary[]>([]);
@@ -80,11 +87,17 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     setLoading(true);
     setError(null);
 
-    const { data: logs, error: logErr } = await supabase
+    let logsQuery = supabase
       .from("daily_logs")
       .select("employee_id, branch_id, attendance_status, shortage_amount, advance_amount, fine_amount, extra_shifts_worked")
       .gte("log_date", monthStart)
       .lte("log_date", selectedPeriod?.end_date || "");
+
+    if (!isSuperAdmin && allowedBranchIds && allowedBranchIds.length > 0) {
+      logsQuery = logsQuery.in("branch_id", allowedBranchIds);
+    }
+
+    const { data: logs, error: logErr } = await logsQuery;
 
     if (logErr) { setError(logErr.message); setLoading(false); return; }
 
@@ -129,12 +142,16 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       s.total_fines += +l.fine_amount;
     });
 
-    const { count } = await supabase.from("employees").select("id", { count: "exact", head: true }).eq("employment_status", "active");
+    let empCountQuery = supabase.from("employees").select("id", { count: "exact", head: true }).eq("employment_status", "active");
+    if (!isSuperAdmin && allowedBranchIds && allowedBranchIds.length > 0) {
+      empCountQuery = empCountQuery.in("branch_id", allowedBranchIds);
+    }
+    const { count } = await empCountQuery;
     setNoLogsCount((count || 0) - Object.keys(agg).length);
     setSummaries(Object.values(agg).sort((a, b) => a.branch_name.localeCompare(b.branch_name) || a.full_name.localeCompare(b.full_name)));
     setStep("preview");
     setLoading(false);
-  }, [periodId, monthStart, selectedPeriod?.end_date]);
+  }, [periodId, monthStart, selectedPeriod?.end_date, isSuperAdmin, allowedBranchIds]);
 
   const generatePayroll = async () => {
     setStep("generating");
@@ -151,10 +168,16 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
   };
 
   const fetchPayrollRecords = async () => {
-    const { data: records, error: recErr } = await supabase
+    let recQuery = supabase
       .from("payroll_records")
       .select("*")
       .eq("payroll_period_id", periodId);
+
+    if (!isSuperAdmin && allowedBranchIds && allowedBranchIds.length > 0) {
+      recQuery = recQuery.in("branch_id", allowedBranchIds);
+    }
+
+    const { data: records, error: recErr } = await recQuery;
 
     if (recErr || !records || records.length === 0) {
       if (recErr) setError(recErr.message);
@@ -214,6 +237,33 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     );
 
     setPayrollRecords(fullRecords);
+
+    // Fetch leave balances for all employees
+    const endDate = selectedPeriod?.end_date || new Date().toISOString().split("T")[0];
+    const leaveMap: Record<string, any> = {};
+    for (const rec of fullRecords) {
+      const { data: lb } = await supabase.rpc("get_leave_balance", {
+        p_employee_id: rec.employee_id,
+        p_as_of_date: endDate,
+      });
+      if (lb && lb.length > 0) leaveMap[rec.employee_id] = lb[0];
+    }
+
+    // Attach leave balances
+    setPayrollRecords(fullRecords.map(r => ({
+      ...r,
+      leave: leaveMap[r.employee_id] ? {
+        annual_accrued: +leaveMap[r.employee_id].annual_accrued,
+        annual_used: +leaveMap[r.employee_id].annual_used,
+        annual_balance: +leaveMap[r.employee_id].annual_balance,
+        sick_entitled: +leaveMap[r.employee_id].sick_entitled,
+        sick_used: +leaveMap[r.employee_id].sick_used,
+        sick_balance: +leaveMap[r.employee_id].sick_balance,
+        comp_entitled: +leaveMap[r.employee_id].comp_entitled,
+        comp_used: +leaveMap[r.employee_id].comp_used,
+        comp_balance: +leaveMap[r.employee_id].comp_balance,
+      } : undefined,
+    })));
   };
 
   const downloadPayslip = async (record: FullPayrollRecord) => {
@@ -387,9 +437,9 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
             <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 2px" }}>
               <thead>
                 <tr>
-                  {["Employee", "Branch", "Gross", "NAPSA", "NHIMA", "Shortages", "Advances", "Net Pay", "Payslip"].map((h) => (
+                  {["Employee", "Branch", "Gross", "NAPSA", "NHIMA", "Shortages", "Advances", "Net Pay", "Leave Bal.", "Payslip"].map((h) => (
                     <th key={h} className="px-3 py-2 text-[10px] uppercase tracking-wider font-semibold border-b whitespace-nowrap"
-                      style={{ textAlign: h === "Employee" || h === "Branch" || h === "Payslip" ? "left" : "right", color: "#636363", borderColor: "#2a2a2a" }}>{h}</th>
+                      style={{ textAlign: h === "Employee" || h === "Branch" || h === "Payslip" || h === "Leave Bal." ? "left" : "right", color: "#636363", borderColor: "#2a2a2a" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -408,6 +458,9 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
                       {r.advances > 0 ? fmt(r.advances) : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px] font-bold" style={{ color: "#4ade80" }}>{fmtDec(r.net_salary_due)}</td>
+                    <td className="px-3 py-2.5 text-center text-[11px]" style={{ color: r.leave && r.leave.annual_balance <= 0 ? "#f87171" : "#60a5fa" }}>
+                      {r.leave ? r.leave.annual_balance + "d" : "—"}
+                    </td>
                     <td className="px-3 py-2.5">
                       <button onClick={() => downloadPayslip(r)} disabled={downloading === r.employee_id}
                         className="px-3 py-1.5 rounded-md text-[11px] font-medium transition-all"
@@ -429,6 +482,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(resultTotals.shortages)}</td>
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(resultTotals.advances)}</td>
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmtDec(resultTotals.net)}</td>
+                  <td className="px-3 py-3"></td>
                   <td className="px-3 py-3"></td>
                 </tr>
               </tbody>
