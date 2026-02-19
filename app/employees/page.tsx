@@ -1,4 +1,4 @@
-import { getPayrollData } from "@/lib/data";
+import { getPayrollData, getEmployeeContacts } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
 import EmployeeTable from "./EmployeeTable";
 
@@ -11,7 +11,11 @@ export default async function EmployeesPage({
 }) {
   const { role } = await getCurrentUser();
   const branchFilter = role?.is_super_admin ? null : role?.branch_ids || [];
-  const records = await getPayrollData("January 2026", branchFilter);
+  
+  const [records, contacts] = await Promise.all([
+    getPayrollData("January 2026", branchFilter),
+    getEmployeeContacts(branchFilter),
+  ]);
 
   const branchNames = Object.entries(
     records.reduce<Record<string, number>>((acc, r) => {
@@ -25,6 +29,7 @@ export default async function EmployeesPage({
   return (
     <EmployeeTable
       records={records}
+      contacts={contacts}
       branchNames={branchNames}
       initialBranch={searchParams.branch || null}
     />

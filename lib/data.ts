@@ -1,5 +1,42 @@
 import { supabase } from "./supabase";
-import type { PayrollRecord } from "./helpers";
+import type { PayrollRecord, EmployeeContact } from "./helpers";
+
+export async function getEmployeeContacts(
+  branchIds?: string[] | null
+): Promise<EmployeeContact[]> {
+  let query = supabase
+    .from("employees")
+    .select(
+      `id, full_name, phone, email, mobile_money_number, home_address,
+       nrc_number, tpin, bank_name, bank_account_number, social_security_number,
+       emergency_contact_name, emergency_contact_phone, date_started, branch_id`
+    )
+    .eq("employment_status", "active");
+
+  if (branchIds && branchIds.length > 0) {
+    query = query.in("branch_id", branchIds);
+  }
+
+  const { data } = await query;
+  if (!data) return [];
+
+  return data.map((e: any) => ({
+    employee_id: e.id,
+    full_name: e.full_name,
+    phone: e.phone,
+    email: e.email,
+    mobile_money_number: e.mobile_money_number,
+    home_address: e.home_address,
+    nrc_number: e.nrc_number,
+    tpin: e.tpin,
+    bank_name: e.bank_name,
+    bank_account_number: e.bank_account_number,
+    social_security_number: e.social_security_number,
+    emergency_contact_name: e.emergency_contact_name,
+    emergency_contact_phone: e.emergency_contact_phone,
+    date_started: e.date_started,
+  }));
+}
 
 export async function getPayrollData(
   periodName: string = "January 2026",

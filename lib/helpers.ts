@@ -38,6 +38,23 @@ export interface PayrollRecord {
   comments: string | null;
 }
 
+export interface EmployeeContact {
+  employee_id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  mobile_money_number: string | null;
+  home_address: string | null;
+  nrc_number: string | null;
+  tpin: string | null;
+  bank_name: string | null;
+  bank_account_number: string | null;
+  social_security_number: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  date_started: string | null;
+}
+
 export interface BranchSummary {
   branch: string;
   employees: number;
