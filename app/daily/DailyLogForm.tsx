@@ -15,11 +15,18 @@ interface LogEntry {
 }
 
 const ATTENDANCE_OPTIONS = [
+  { value: "", label: "—", color: "#636363", icon: "" },
   { value: "present", label: "Present", color: "#10b981", icon: "✅" },
+  { value: "trainee", label: "Trainee", color: "#60a5fa", icon: "🎓" },
+  { value: "absent_authorised", label: "Absent Authorised", color: "#f59e0b", icon: "📋" },
+  { value: "sick_authorised", label: "Sick Authorised", color: "#c084fc", icon: "🏥" },
+  { value: "absent_no_reason", label: "Absent No Reason", color: "#ef4444", icon: "❌" },
+  { value: "maternity_leave", label: "Maternity Leave", color: "#f472b6", icon: "🤰" },
+  { value: "off_day", label: "Off Day", color: "#64748b", icon: "😴" },
+  { value: "on_leave", label: "On Leave", color: "#8b5cf6", icon: "🏖" },
+  { value: "on_leave_no_pay", label: "On Leave No Pay", color: "#a3a3a3", icon: "🚫" },
+  { value: "night_shift", label: "Night Shift", color: "#1e40af", icon: "🌙" },
   { value: "late", label: "Late", color: "#f59e0b", icon: "⏰" },
-  { value: "absent", label: "Absent", color: "#ef4444", icon: "❌" },
-  { value: "leave", label: "On Leave", color: "#8b5cf6", icon: "🏖" },
-  { value: "day_off", label: "Day Off", color: "#64748b", icon: "😴" },
   { value: "extra_shift", label: "Extra Shift", color: "#06b6d4", icon: "💪" },
 ];
 
@@ -101,7 +108,7 @@ export default function DailyLogForm() {
       const isScheduled = schedMap[e.id]?.is_scheduled ?? true;
       newEntries[e.id] = {
         employee_id: e.id,
-        attendance_status: existing?.attendance_status || (isScheduled ? "present" : "day_off"),
+        attendance_status: existing?.attendance_status || (isScheduled ? "present" : "off_day"),
         arrival_time: existing?.arrival_time || null,
         leave_type: existing?.leave_type || null,
         shortage_amount: existing ? +existing.shortage_amount : 0,
@@ -148,7 +155,7 @@ export default function DailyLogForm() {
       const updated = { ...prev };
       Object.keys(updated).forEach((id) => {
         const isOn = schedule[id]?.is_scheduled ?? true;
-        updated[id] = { ...updated[id], attendance_status: isOn ? "present" : "day_off", saved: false };
+        updated[id] = { ...updated[id], attendance_status: isOn ? "present" : "off_day", saved: false };
       });
       return updated;
     });
@@ -173,7 +180,7 @@ export default function DailyLogForm() {
     const rows = Object.values(entries).map((e) => ({
       employee_id: e.employee_id, branch_id: branchId, log_date: logDate,
       attendance_status: e.attendance_status, arrival_time: e.arrival_time || null,
-      leave_type: e.attendance_status === "leave" ? e.leave_type : null,
+      leave_type: e.attendance_status === "on_leave" ? e.leave_type : null,
       shortage_amount: e.shortage_amount || 0, advance_amount: e.advance_amount || 0,
       fine_amount: e.fine_amount || 0,
       extra_shifts_worked: e.attendance_status === "extra_shift" ? (e.extra_shifts_worked || 1) : e.extra_shifts_worked || 0,
@@ -285,11 +292,11 @@ export default function DailyLogForm() {
             <span className="text-[12px] font-medium" style={{ color: "#64748b" }}>⚫ Off: {schedOff}</span>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {ATTENDANCE_OPTIONS.map((opt) => {
+            {ATTENDANCE_OPTIONS.filter((opt) => opt.value && (counts[opt.value] || 0) > 0).map((opt) => {
               const count = counts[opt.value] || 0;
               return (
                 <div key={opt.value} className="px-3 py-1.5 rounded-full text-[11px] font-medium"
-                  style={{ background: count > 0 ? opt.color + "20" : "transparent", color: count > 0 ? opt.color : "var(--text-muted)", border: `1px solid ${count > 0 ? opt.color + "40" : "var(--border)"}` }}>
+                  style={{ background: opt.color + "20", color: opt.color, border: `1px solid ${opt.color}40` }}>
                   {opt.icon} {opt.label}: {count}
                 </div>
               );
@@ -332,9 +339,9 @@ export default function DailyLogForm() {
 
                 return (
                   <tr key={emp.id} className="transition-colors"
-                    style={{ background: entry.saved ? "transparent" : "#f59e0b08", opacity: !isOn && entry.attendance_status === "day_off" ? 0.55 : 1 }}
+                    style={{ background: entry.saved ? "transparent" : "#f59e0b08", opacity: !isOn && entry.attendance_status === "off_day" ? 0.55 : 1 }}
                     onMouseOver={(e) => { e.currentTarget.style.background = "var(--card-hover)"; e.currentTarget.style.opacity = "1"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = entry.saved ? "transparent" : "#f59e0b08"; e.currentTarget.style.opacity = (!isOn && entry.attendance_status === "day_off") ? "0.55" : "1"; }}>
+                    onMouseOut={(e) => { e.currentTarget.style.background = entry.saved ? "transparent" : "#f59e0b08"; e.currentTarget.style.opacity = (!isOn && entry.attendance_status === "off_day") ? "0.55" : "1"; }}>
 
                     <td className="px-1 py-2.5 text-center w-8">
                       {entry.saved ? <span title="Saved" className="text-[--green] text-[11px]">●</span> : <span title="Unsaved" className="text-[--accent] text-[11px]">○</span>}
@@ -355,14 +362,14 @@ export default function DailyLogForm() {
                     <td className="px-3 py-2.5">
                       <select value={entry.attendance_status} onChange={(e) => updateEntry(emp.id, "attendance_status", e.target.value)}
                         disabled={locked}
-                        className="px-2.5 py-1.5 rounded-md border text-[12px] font-medium outline-none w-[130px]"
+                        className="px-2.5 py-1.5 rounded-md border text-[12px] font-medium outline-none w-[175px]"
                         style={{ background: (attOpt?.color || "#64748b") + "15", borderColor: (attOpt?.color || "#64748b") + "40", color: attOpt?.color || "var(--text-dim)", opacity: locked ? 0.6 : 1, cursor: locked ? "not-allowed" : "pointer" }}>
                         {ATTENDANCE_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.icon} {opt.label}</option>))}
                       </select>
                     </td>
 
                     <td className="px-3 py-2.5">
-                      {entry.attendance_status === "leave" ? (
+                      {entry.attendance_status === "on_leave" ? (
                         <select value={entry.leave_type || ""} onChange={(e) => updateEntry(emp.id, "leave_type", e.target.value || null)}
                           disabled={locked}
                           className="px-2.5 py-1.5 rounded-md border border-[--border] bg-[--card] text-[--text] text-[12px] outline-none w-[120px]"

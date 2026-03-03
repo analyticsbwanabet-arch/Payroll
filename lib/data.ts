@@ -76,8 +76,8 @@ export async function getPayrollData(
   const branchIdsFromRecords = Array.from(new Set(records.map((r: any) => r.branch_id)));
 
   const [{ data: employees }, { data: branches }] = await Promise.all([
-    supabase.from("employees").select("id, full_name, position").in("id", empIds),
-    supabase.from("branches").select("id, name").in("id", branchIdsFromRecords),
+    supabase.from("employees").select("id, full_name, position, employment_status, branch_id").in("id", empIds),
+    supabase.from("branches").select("id, name"),
   ]);
 
   const empMap: Record<string, any> = {};
@@ -86,25 +86,31 @@ export async function getPayrollData(
   (branches || []).forEach((b: any) => (branchMap[b.id] = b));
 
   return records
-    .map((r: any) => ({
-      full_name: empMap[r.employee_id]?.full_name || "Unknown",
-      position: empMap[r.employee_id]?.position || "unknown",
-      branch_name: branchMap[r.branch_id]?.name || "Unknown",
-      gross_salary: +r.gross_salary,
-      net_salary_due: +r.net_salary_due,
-      napsa_employee: +r.napsa_employee,
-      nhima_employee: +r.nhima_employee,
-      paye_tax: +r.paye_tax,
-      extra_shifts_count: +r.extra_shifts_count,
-      extra_shift_total: +r.extra_shift_total,
-      bonus: +r.bonus,
-      shortage_amount: +r.shortage_amount,
-      advances: +r.advances,
-      fines: +r.fines,
-      absent_days: +r.absent_days,
-      absence_deduction: +r.absence_deduction,
-      comments: r.comments,
-    }))
+    .map((r: any) => {
+      const emp = empMap[r.employee_id];
+      // Use current branch from employee record (handles transfers)
+      const currentBranchId = emp?.branch_id || r.branch_id;
+      return {
+        full_name: emp?.full_name || "Unknown",
+        position: emp?.position || "unknown",
+        branch_name: branchMap[currentBranchId]?.name || branchMap[r.branch_id]?.name || "Unknown",
+        employment_status: emp?.employment_status || "active",
+        gross_salary: +r.gross_salary,
+        net_salary_due: +r.net_salary_due,
+        napsa_employee: +r.napsa_employee,
+        nhima_employee: +r.nhima_employee,
+        paye_tax: +r.paye_tax,
+        extra_shifts_count: +r.extra_shifts_count,
+        extra_shift_total: +r.extra_shift_total,
+        bonus: +r.bonus,
+        shortage_amount: +r.shortage_amount,
+        advances: +r.advances,
+        fines: +r.fines,
+        absent_days: +r.absent_days,
+        absence_deduction: +r.absence_deduction,
+        comments: r.comments,
+      };
+    })
     .sort((a: PayrollRecord, b: PayrollRecord) =>
       a.branch_name.localeCompare(b.branch_name) || a.full_name.localeCompare(b.full_name)
     );

@@ -1,15 +1,20 @@
 import { getEmployeeContacts } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { redirect } from "next/navigation";
 import StaffDirectory from "./StaffDirectory";
 
 export const revalidate = 60;
 
 export default async function DirectoryPage() {
   const { role } = await getCurrentUser();
-  const branchFilter = role?.is_super_admin ? null : role?.branch_ids || [];
 
-  const contacts = await getEmployeeContacts(branchFilter);
+  // Only super admins can access this page
+  if (!role?.is_super_admin) {
+    redirect("/");
+  }
+
+  const contacts = await getEmployeeContacts(null);
 
   // Get branch names
   const { data: branches } = await supabase.from("branches").select("id, name");
@@ -21,10 +26,6 @@ export default async function DirectoryPage() {
     .from("employees")
     .select("id, branch_id, position, employment_status")
     .eq("employment_status", "active");
-
-  if (branchFilter && branchFilter.length > 0) {
-    empQuery = empQuery.in("branch_id", branchFilter);
-  }
 
   const { data: employees } = await empQuery;
   const empBranchMap: Record<string, string> = {};

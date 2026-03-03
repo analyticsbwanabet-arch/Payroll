@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/lib/auth";
 
 const navItems = [
-  { href: "/", label: "Overview", icon: "📊" },
-  { href: "/branches", label: "Branches", icon: "🏢" },
-  { href: "/employees", label: "Employees", icon: "👥" },
-  { href: "/directory", label: "Staff Directory", icon: "📇" },
-  { href: "/daily", label: "Daily Log", icon: "📝" },
-  { href: "/payroll", label: "Payroll", icon: "💰" },
+  { href: "/", label: "Overview", icon: "📊", superOnly: false },
+  { href: "/branches", label: "Branches", icon: "🏢", superOnly: false },
+  { href: "/employees", label: "Employees", icon: "👥", superOnly: false },
+  { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: true },
+  { href: "/daily", label: "Daily Log", icon: "📝", superOnly: false },
+  { href: "/payroll", label: "Payroll", icon: "💰", superOnly: false },
 ];
 
 export default function Nav({ userRole }: { userRole: UserRole }) {
@@ -31,7 +31,9 @@ export default function Nav({ userRole }: { userRole: UserRole }) {
       </div>
 
       <nav className="flex gap-1 rounded-[10px] p-1" style={{ background: "#0a0a0a", border: "1px solid #2a2a2a" }}>
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => !item.superOnly || userRole.is_super_admin)
+          .map((item) => {
           const active = pathname === item.href;
           return (
             <Link key={item.href} href={item.href}

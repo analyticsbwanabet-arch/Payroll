@@ -15,6 +15,20 @@ function badge(position: string) {
   return <span className={`badge ${cls}`}>{posLabel[position] || position}</span>;
 }
 
+function statusBadge(status: string) {
+  const label = status === "resigned" ? "Resigned" : status === "dismissed" ? "Dismissed" : status === "deceased" ? "Deceased" : status === "suspended" ? "Suspended" : status;
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 6,
+      background: status === "resigned" ? "#7f1d1d" : status === "dismissed" ? "#78350f" : "#1e1e1e",
+      color: status === "resigned" ? "#fca5a5" : status === "dismissed" ? "#fbbf24" : "#a3a3a3",
+      textTransform: "uppercase", letterSpacing: "0.04em",
+    }}>
+      {label}
+    </span>
+  );
+}
+
 function InfoItem({ icon, label, value }: { icon: string; label: string; value: string | null }) {
   if (!value) return null;
   return (
@@ -44,7 +58,6 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
 
   return (
     <div style={{ padding: "16px 12px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Contact Section */}
       {hasContact && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#facc15", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -57,8 +70,6 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
           </div>
         </div>
       )}
-
-      {/* Personal Section */}
       {hasPersonal && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -72,8 +83,6 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
           </div>
         </div>
       )}
-
-      {/* Bank Section */}
       {hasBank && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#22d3ee", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -86,8 +95,6 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
           </div>
         </div>
       )}
-
-      {/* Emergency Section */}
       {hasEmergency && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#f87171", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -99,7 +106,6 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
           </div>
         </div>
       )}
-
       {!hasContact && !hasPersonal && !hasBank && !hasEmergency && (
         <div style={{ color: "#636363", fontSize: 13, fontStyle: "italic" }}>
           No contact details on file yet.
@@ -122,6 +128,8 @@ const columns = [
   { key: "net_salary_due", label: "Net Pay", align: "right" as const },
 ];
 
+const isFormer = (emp: PayrollRecord) => emp.employment_status !== "active";
+
 export default function EmployeeTable({
   records, contacts, branchNames, initialBranch,
 }: {
@@ -135,8 +143,8 @@ export default function EmployeeTable({
   const [sortCol, setSortCol] = useState("full_name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showFormer, setShowFormer] = useState(false);
 
-  // Build contact lookup by name
   const contactMap: Record<string, EmployeeContact> = {};
   contacts.forEach((c) => { contactMap[c.full_name] = c; });
 
@@ -145,7 +153,21 @@ export default function EmployeeTable({
     else { setSortCol(col); setSortDir("asc"); }
   };
 
+  // Active records only (for counts)
+  const activeRecords = records.filter((e) => !isFormer(e));
+  const formerRecords = records.filter((e) => isFormer(e));
+
+  // Branch counts from active employees only, using current branch
+  const activeBranchCounts: Record<string, number> = {};
+  activeRecords.forEach((r) => {
+    activeBranchCounts[r.branch_name] = (activeBranchCounts[r.branch_name] || 0) + 1;
+  });
+  const activeBranchNames = Object.entries(activeBranchCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const filtered = records
+    .filter((e) => showFormer ? isFormer(e) : !isFormer(e))
     .filter((e) => !branch || e.branch_name === branch)
     .filter((e) => !search || e.full_name.toLowerCase().includes(search.toLowerCase()) || e.position.toLowerCase().includes(search.toLowerCase()))
     .sort((a: any, b: any) => {
@@ -162,10 +184,12 @@ export default function EmployeeTable({
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "#facc15" }}>
-            {branch ? branch : "All Employees"} — {filtered.length} staff
+          <h1 className="text-xl font-bold" style={{ color: showFormer ? "#f87171" : "#facc15" }}>
+            {showFormer ? "Former Employees" : (branch ? branch : "All Employees")} — {filtered.length} {showFormer ? "former" : "staff"}
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: "#636363" }}>Click any row to view contact details • Click headers to sort</p>
+          <p className="text-[13px] mt-1" style={{ color: "#636363" }}>
+            {showFormer ? "Resigned & dismissed employees" : "Click any row to view contact details • Click headers to sort"}
+          </p>
         </div>
         <div className="flex gap-2 items-center">
           <input type="text" placeholder="Search name or role..." value={search} onChange={(e) => setSearch(e.target.value)}
@@ -175,14 +199,36 @@ export default function EmployeeTable({
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setBranch(null)} className={`chip ${!branch ? "chip-active" : ""}`}>All ({records.length})</button>
-        {branchNames.map((b, i) => (
-          <button key={b.name} onClick={() => setBranch(b.name)} className="chip"
-            style={branch === b.name ? { borderColor: COLORS[i % COLORS.length], background: COLORS[i % COLORS.length] + "22", color: COLORS[i % COLORS.length] } : undefined}>
-            {shortBranch(b.name)} ({b.count})
+      <div className="flex gap-2 flex-wrap items-center">
+        {!showFormer && (
+          <>
+            <button onClick={() => setBranch(null)} className={`chip ${!branch ? "chip-active" : ""}`}>
+              All ({activeRecords.length})
+            </button>
+            {activeBranchNames.map((b, i) => (
+              <button key={b.name} onClick={() => setBranch(b.name)} className="chip"
+                style={branch === b.name ? { borderColor: COLORS[i % COLORS.length], background: COLORS[i % COLORS.length] + "22", color: COLORS[i % COLORS.length] } : undefined}>
+                {shortBranch(b.name)} ({b.count})
+              </button>
+            ))}
+          </>
+        )}
+        {/* Separator */}
+        {!showFormer && formerRecords.length > 0 && (
+          <span style={{ width: 1, height: 24, background: "#2a2a2a", margin: "0 4px" }} />
+        )}
+        {/* Former toggle */}
+        {formerRecords.length > 0 && (
+          <button
+            onClick={() => { setShowFormer(!showFormer); setBranch(null); }}
+            className="chip"
+            style={showFormer
+              ? { borderColor: "#f87171", background: "#f8717122", color: "#f87171" }
+              : { borderColor: "#3a3a3a", color: "#636363" }
+            }>
+            {showFormer ? "← Back to Active" : `Former (${formerRecords.length})`}
           </button>
-        ))}
+        )}
       </div>
 
       <div className="chart-card overflow-x-auto">
@@ -203,6 +249,7 @@ export default function EmployeeTable({
               const isExpanded = expanded === emp.full_name;
               const contact = contactMap[emp.full_name];
               const hasInfo = contact && (contact.phone || contact.email || contact.home_address || contact.mobile_money_number);
+              const former = isFormer(emp);
               return (
                 <>
                   <tr key={`row-${i}`}
@@ -210,6 +257,8 @@ export default function EmployeeTable({
                     className="row-hover transition-colors"
                     style={{
                       cursor: "pointer",
+                      opacity: former ? 0.4 : 1,
+                      filter: former ? "grayscale(1)" : "none",
                       ...(isExpanded ? { background: "#1a1a1a" } : {}),
                     }}>
                     <td className="px-3 py-3 font-semibold text-[13px] whitespace-nowrap" style={{ color: "#f5f5f5" }}>
@@ -220,7 +269,8 @@ export default function EmployeeTable({
                           transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
                         }}>▶</span>
                         {emp.full_name}
-                        {hasInfo && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block", flexShrink: 0 }} title="Has contact info" />}
+                        {former && <span style={{ marginLeft: 4 }}>{statusBadge(emp.employment_status)}</span>}
+                        {!former && hasInfo && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block", flexShrink: 0 }} title="Has contact info" />}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-[12px]" style={{ color: "#a3a3a3" }}>{shortBranch(emp.branch_name)}</td>
@@ -243,7 +293,7 @@ export default function EmployeeTable({
                     <tr key={`detail-${i}`}>
                       <td colSpan={columns.length} style={{
                         background: "#111111",
-                        borderLeft: "3px solid #facc15",
+                        borderLeft: `3px solid ${former ? "#f87171" : "#facc15"}`,
                         borderBottom: "1px solid #2a2a2a",
                       }}>
                         <DetailPanel contact={contact} />
@@ -255,7 +305,9 @@ export default function EmployeeTable({
             })}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="text-center py-10" style={{ color: "#636363" }}>No employees match your filters</div>}
+        {filtered.length === 0 && <div className="text-center py-10" style={{ color: "#636363" }}>
+          {showFormer ? "No former employees." : "No employees match your filters"}
+        </div>}
       </div>
     </div>
   );

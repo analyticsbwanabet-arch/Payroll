@@ -22,6 +22,7 @@ export interface PayrollRecord {
   full_name: string;
   branch_name: string;
   position: string;
+  employment_status: string;
   gross_salary: number;
   net_salary_due: number;
   napsa_employee: number;
