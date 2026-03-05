@@ -23,7 +23,10 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Use getSession (reads JWT locally) instead of getUser (network call)
+  // to avoid Vercel middleware timeout. getUser is still used in server components.
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   // If no user and not on login page, redirect to login
   if (
