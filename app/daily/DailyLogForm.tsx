@@ -57,7 +57,7 @@ function shortEmail(email: string | null) {
 }
 
 export default function DailyLogForm() {
-  const { allowedBranchIds, isSuperAdmin, email: userEmail, displayName } = useAuth();
+  const { allowedBranchIds, isSuperAdmin, email: userEmail, displayName, loading: authLoading } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchId, setBranchId] = useState("");
   const [logDate, setLogDate] = useState(today());
@@ -189,18 +189,29 @@ export default function DailyLogForm() {
   };
 
   useEffect(() => {
+    // DON'T load branches until auth has fully resolved
+    if (authLoading) return;
+    
     const loadBranches = async () => {
       let query = supabase.from("branches").select("id, name").order("name");
-      if (!isSuperAdmin && allowedBranchIds && allowedBranchIds.length > 0) {
-        query = query.in("id", allowedBranchIds);
+      
+      if (!isSuperAdmin) {
+        // Non-super-admins can ONLY see their assigned branches — no exceptions
+        if (allowedBranchIds && allowedBranchIds.length > 0) {
+          query = query.in("id", allowedBranchIds);
+        } else {
+          setBranches([]);
+          return;
+        }
       }
+      
       const { data } = await query;
       const list = data || [];
       setBranches(list);
       if (list.length === 1) setBranchId(list[0].id);
     };
     loadBranches();
-  }, [allowedBranchIds, isSuperAdmin]);
+  }, [allowedBranchIds, isSuperAdmin, authLoading]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -282,6 +293,17 @@ export default function DailyLogForm() {
     return a.full_name.localeCompare(b.full_name);
   });
 
+  if (authLoading) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <h1 className="text-xl font-bold">Daily Employee Log</h1>
+          <p className="text-[13px] text-[--text-muted] mt-1">Loading your access...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -301,11 +323,17 @@ export default function DailyLogForm() {
       <div className="flex gap-3 flex-wrap items-end">
         <div>
           <label className="block text-[11px] text-[--text-muted] uppercase tracking-wider mb-1.5 font-medium">Branch</label>
-          <select value={branchId} onChange={(e) => setBranchId(e.target.value)}
-            className="px-4 py-2.5 rounded-lg border border-[--border] bg-[--card] text-[--text] text-[13px] min-w-[200px] outline-none focus:border-[--accent]">
-            <option value="">Select branch...</option>
-            {branches.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
-          </select>
+          {!isSuperAdmin && branches.length === 1 ? (
+            <div className="px-4 py-2.5 rounded-lg border border-[--border] bg-[--card] text-[--text] text-[13px] min-w-[200px]">
+              {branches[0].name}
+            </div>
+          ) : (
+            <select value={branchId} onChange={(e) => setBranchId(e.target.value)}
+              className="px-4 py-2.5 rounded-lg border border-[--border] bg-[--card] text-[--text] text-[13px] min-w-[200px] outline-none focus:border-[--accent]">
+              <option value="">Select branch...</option>
+              {branches.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
+            </select>
+          )}
         </div>
 
         <div>
@@ -322,10 +350,12 @@ export default function DailyLogForm() {
               title="Set scheduled employees to Present, off-duty to Day Off">
               📅 Apply Schedule
             </button>
-            <button onClick={markAllPresent}
-              className="px-4 py-2.5 rounded-lg border border-[--border] text-[--text-dim] text-[13px] hover:border-[--green] hover:text-[--green] transition-colors">
-              ✅ Mark All Present
-            </button>
+            {isSuperAdmin && (
+              <button onClick={markAllPresent}
+                className="px-4 py-2.5 rounded-lg border border-[--border] text-[--text-dim] text-[13px] hover:border-[--green] hover:text-[--green] transition-colors">
+                ✅ Mark All Present
+              </button>
+            )}
           </>
         )}
 
