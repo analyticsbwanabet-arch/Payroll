@@ -68,6 +68,8 @@ export default function DailyLogForm() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [togglingSchedule, setTogglingSchedule] = useState<string | null>(null);
 
   // Edit lock logic: managers can only edit today and yesterday's logs
   const isLocked = useCallback(() => {
@@ -125,7 +127,66 @@ export default function DailyLogForm() {
     });
 
     setEntries(newEntries); setHasChanges(false); setLoading(false);
+
+    // Load schedule overrides for this date
+    const { data: overrideData } = await supabase
+      .from("schedule_overrides")
+      .select("employee_id, is_working")
+      .eq("override_date", logDate);
+    const ovMap: Record<string, boolean> = {};
+    (overrideData || []).forEach((o: any) => { ovMap[o.employee_id] = o.is_working; });
+    setOverrides(ovMap);
   }, [branchId, logDate]);
+
+  const toggleSchedule = async (empId: string) => {
+    if (!isSuperAdmin || !logDate) return;
+    setTogglingSchedule(empId);
+
+    const sched = schedule[empId];
+    const currentlyOn = sched?.is_scheduled ?? true;
+    const hasOverride = empId in overrides;
+
+    if (hasOverride) {
+      // Remove override → revert to default schedule
+      await supabase.from("schedule_overrides").delete()
+        .eq("employee_id", empId).eq("override_date", logDate);
+      setOverrides((prev) => { const n = { ...prev }; delete n[empId]; return n; });
+      // Refresh schedule from server
+      const { data: newSched } = await supabase.rpc("get_branch_schedule", { p_branch_id: branchId, p_date: logDate });
+      const schedMap: Record<string, ScheduleInfo> = {};
+      (newSched || []).forEach((s: any) => {
+        schedMap[s.employee_id] = { employee_id: s.employee_id, is_scheduled: s.is_scheduled, schedule_type: s.schedule_type, schedule_group: s.schedule_group };
+      });
+      setSchedule(schedMap);
+    } else {
+      // Create override → flip the schedule
+      const newStatus = !currentlyOn;
+      const modifierName = displayName || userEmail || "admin";
+      await supabase.from("schedule_overrides").upsert({
+        employee_id: empId, override_date: logDate, is_working: newStatus,
+        reason: `Manual override by ${modifierName}`, created_by: modifierName,
+      }, { onConflict: "employee_id,override_date" });
+      setOverrides((prev) => ({ ...prev, [empId]: newStatus }));
+      // Update local schedule state
+      setSchedule((prev) => ({
+        ...prev,
+        [empId]: { ...prev[empId], is_scheduled: newStatus },
+      }));
+    }
+
+    // Update attendance default if no log exists
+    setEntries((prev) => {
+      const entry = prev[empId];
+      if (entry && !entry.saved) {
+        const newSched = schedule[empId];
+        const willBeOn = hasOverride ? (newSched?.is_scheduled ?? true) : !currentlyOn;
+        return { ...prev, [empId]: { ...entry, attendance_status: willBeOn ? "present" : "off_day", saved: false } };
+      }
+      return prev;
+    });
+
+    setTogglingSchedule(null);
+  };
 
   useEffect(() => {
     const loadBranches = async () => {
@@ -351,10 +412,32 @@ export default function DailyLogForm() {
 
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                        style={{ background: isOn ? "#22c55e20" : "#64748b20", color: isOn ? "#4ade80" : "#64748b", border: `1px solid ${isOn ? "#22c55e40" : "#64748b30"}` }}>
+                        style={{
+                          background: isOn ? "#22c55e20" : "#64748b20",
+                          color: isOn ? "#4ade80" : "#64748b",
+                          border: `1px solid ${isOn ? "#22c55e40" : "#64748b30"}`,
+                          ...(emp.id in overrides ? { borderStyle: "dashed", borderColor: "#facc15" } : {}),
+                        }}>
                         {isOn ? "🟢 ON" : "⚫ OFF"}
                         <span style={{ color: "#636363", fontWeight: 400 }}>{schedLabel}</span>
+                        {emp.id in overrides && <span style={{ color: "#facc15", fontSize: 9 }} title="Manually overridden">✎</span>}
                       </span>
+                      {isSuperAdmin && sched?.schedule_type && (
+                        <button
+                          onClick={() => toggleSchedule(emp.id)}
+                          disabled={togglingSchedule === emp.id}
+                          title={emp.id in overrides ? "Remove override (revert to schedule)" : `Override: turn ${isOn ? "OFF" : "ON"}`}
+                          className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-semibold transition-all"
+                          style={{
+                            background: emp.id in overrides ? "#facc1520" : "#ffffff08",
+                            border: `1px solid ${emp.id in overrides ? "#facc1540" : "#ffffff15"}`,
+                            color: emp.id in overrides ? "#facc15" : "#636363",
+                            cursor: togglingSchedule === emp.id ? "wait" : "pointer",
+                            opacity: togglingSchedule === emp.id ? 0.5 : 1,
+                          }}>
+                          {togglingSchedule === emp.id ? "..." : emp.id in overrides ? "↩ Reset" : isOn ? "→ OFF" : "→ ON"}
+                        </button>
+                      )}
                     </td>
 
                     <td className="px-3 py-2.5 text-[11px] text-[--text-dim]">{posLabel[emp.position] || emp.position}</td>
