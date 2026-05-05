@@ -9,7 +9,7 @@ interface ScheduleInfo { employee_id: string; is_scheduled: boolean; schedule_ty
 interface LogEntry {
   employee_id: string; attendance_status: string; arrival_time: string | null;
   leave_type: string | null; shortage_amount: number; advance_amount: number;
-  fine_amount: number; extra_shifts_worked: number; comments: string; saved: boolean;
+  fine_amount: number; bonus_amount: number; extra_shifts_worked: number; comments: string; saved: boolean;
   last_modified_by: string | null; last_modified_at: string | null;
   logged_by: string | null; created_at: string | null;
 }
@@ -116,6 +116,7 @@ export default function DailyLogForm() {
         shortage_amount: existing ? +existing.shortage_amount : 0,
         advance_amount: existing ? +existing.advance_amount : 0,
         fine_amount: existing ? +existing.fine_amount : 0,
+        bonus_amount: existing ? +existing.bonus_amount : 0,
         extra_shifts_worked: existing ? +existing.extra_shifts_worked : 0,
         comments: existing?.comments || "",
         saved: !!existing,
@@ -254,7 +255,7 @@ export default function DailyLogForm() {
       attendance_status: e.attendance_status, arrival_time: e.arrival_time || null,
       leave_type: e.attendance_status === "on_leave" ? e.leave_type : null,
       shortage_amount: e.shortage_amount || 0, advance_amount: e.advance_amount || 0,
-      fine_amount: e.fine_amount || 0,
+      fine_amount: e.fine_amount || 0, bonus_amount: e.bonus_amount || 0,
       extra_shifts_worked: e.attendance_status === "extra_shift" ? (e.extra_shifts_worked || 1) : e.extra_shifts_worked || 0,
       comments: e.comments || null,
       logged_by: e.logged_by || modifierName,
@@ -414,7 +415,7 @@ export default function DailyLogForm() {
           <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 2px" }}>
             <thead>
               <tr>
-                {["", "Employee", "Schedule", "Role", "Attendance", "Leave Type", "Extra Shifts", "Shortage", "Advance", "Fine", "Comments", "Last Modified"].map((h) => (
+                {["", "Employee", "Schedule", "Role", "Attendance", "Leave Type", "Extra Shifts", "Bonus", "Shortage", "Advance", "Fine", "Comments", "Last Modified"].map((h) => (
                   <th key={h} className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-semibold text-[--text-muted] border-b border-[--border] text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -497,6 +498,12 @@ export default function DailyLogForm() {
                       <input type="number" min="0" max="3" step="0.5" value={entry.extra_shifts_worked || ""} onChange={(e) => updateEntry(emp.id, "extra_shifts_worked", parseFloat(e.target.value) || 0)} placeholder="0" disabled={locked}
                         className="w-[60px] px-2 py-1.5 rounded-md border border-[--border] bg-[--card] text-[--text] text-[12px] text-center outline-none focus:border-[--cyan]"
                         style={{ opacity: locked ? 0.6 : 1, cursor: locked ? "not-allowed" : "text" }} />
+                    </td>
+
+                    <td className="px-3 py-2.5">
+                      <input type="number" min="0" step="1" value={entry.bonus_amount || ""} onChange={(e) => updateEntry(emp.id, "bonus_amount", parseFloat(e.target.value) || 0)} placeholder="0" disabled={locked}
+                        className="w-[80px] px-2 py-1.5 rounded-md border border-[--border] bg-[--card] text-[12px] text-right outline-none focus:border-[--green]"
+                        style={{ color: entry.bonus_amount > 0 ? "var(--green)" : "var(--text)", opacity: locked ? 0.6 : 1, cursor: locked ? "not-allowed" : "text" }} />
                     </td>
 
                     <td className="px-3 py-2.5">

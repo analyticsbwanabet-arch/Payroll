@@ -10,7 +10,7 @@ const navItems = [
   { href: "/employees", label: "Employees", icon: "👥", superOnly: false },
   { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: true },
   { href: "/daily", label: "Daily Log", icon: "📝", superOnly: false },
-  { href: "/payroll", label: "Payroll", icon: "💰", superOnly: false },
+  { href: "/payroll", label: "Payroll", icon: "💰", superOnly: true },
 ];
 
 export default function Nav({ userRole }: { userRole: UserRole }) {

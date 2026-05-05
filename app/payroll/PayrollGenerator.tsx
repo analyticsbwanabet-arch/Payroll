@@ -78,6 +78,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
   const [error, setError] = useState<string | null>(null);
   const [noLogsCount, setNoLogsCount] = useState(0);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [filterBranch, setFilterBranch] = useState<string>("all");
 
   const selectedPeriod = periods.find((p) => p.id === periodId);
   const monthStart = selectedPeriod?.start_date || "";
@@ -282,7 +283,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     setDownloading("all");
     const { downloadAllPayslips: dlAll } = await import("@/lib/payslip");
     dlAll(
-      payrollRecords.map((r) => ({
+      filteredPayroll.map((r) => ({
         ...r,
         period_name: selectedPeriod?.period_name || "",
         period_start: selectedPeriod?.start_date || "",
@@ -292,7 +293,15 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     setTimeout(() => setDownloading(null), 1500);
   };
 
-  const previewTotals = summaries.reduce(
+  // Branch filter
+  const branchNames = Array.from(new Set([
+    ...summaries.map(s => s.branch_name),
+    ...payrollRecords.map(r => r.branch_name),
+  ])).sort();
+  const filteredSummaries = filterBranch === "all" ? summaries : summaries.filter(s => s.branch_name === filterBranch);
+  const filteredPayroll = filterBranch === "all" ? payrollRecords : payrollRecords.filter(r => r.branch_name === filterBranch);
+
+  const previewTotals = filteredSummaries.reduce(
     (a, b) => ({
       logged: a.logged + 1, absent: a.absent + b.days_absent,
       shortages: a.shortages + b.total_shortages, advances: a.advances + b.total_advances,
@@ -301,7 +310,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     { logged: 0, absent: 0, shortages: 0, advances: 0, fines: 0, extraShifts: 0 }
   );
 
-  const resultTotals = payrollRecords.reduce(
+  const resultTotals = filteredPayroll.reduce(
     (a, b) => ({
       count: a.count + 1, net: a.net + b.net_salary_due, gross: a.gross + b.gross_salary,
       shortages: a.shortages + b.shortage_amount, advances: a.advances + b.advances, fines: a.fines + b.fines,
@@ -320,7 +329,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       <div className="chart-card">
         <div className="text-[13px] font-semibold mb-3" style={{ color: "#a3a3a3" }}>Step 1: Select Payroll Period</div>
         <div className="flex gap-3 items-end flex-wrap">
-          <select value={periodId} onChange={(e) => { setPeriodId(e.target.value); setStep("select"); setPayrollRecords([]); setSummaries([]); }}
+          <select value={periodId} onChange={(e) => { setPeriodId(e.target.value); setStep("select"); setPayrollRecords([]); setSummaries([]); setFilterBranch("all"); }}
             className="px-4 py-2.5 rounded-lg text-[13px] min-w-[220px] outline-none"
             style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }}>
             <option value="">Select period...</option>
@@ -333,6 +342,17 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
               className="px-6 py-2.5 rounded-lg font-semibold text-[13px]" style={{ background: "#22c55e", color: "#000" }}>
               {loading ? "Loading..." : "📋 Preview Daily Logs"}
             </button>
+          )}
+          {periodId && step !== "select" && branchNames.length > 1 && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-medium mb-1" style={{ color: "#636363" }}>Filter by Store</label>
+              <select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}
+                className="px-4 py-2.5 rounded-lg text-[13px] min-w-[200px] outline-none"
+                style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }}>
+                <option value="all">All Stores ({branchNames.length})</option>
+                {branchNames.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
           )}
         </div>
       </div>
@@ -363,7 +383,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
               </button>
             </div>
 
-            {summaries.length > 0 ? (
+            {filteredSummaries.length > 0 ? (
               <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 2px" }}>
                 <thead>
                   <tr>
@@ -374,7 +394,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {summaries.map((s, i) => (
+                  {filteredSummaries.map((s, i) => (
                     <tr key={i} className="row-hover transition-colors">
                       <td className="px-3 py-2.5 font-semibold text-[13px] whitespace-nowrap" style={{ color: "#f5f5f5" }}>{s.full_name}</td>
                       <td className="px-3 py-2.5 text-[12px]" style={{ color: "#a3a3a3" }}>{s.branch_name.replace(" Shop", "").replace(" UB Market", "")}</td>
@@ -407,7 +427,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       )}
 
       {/* Results */}
-      {step === "results" && payrollRecords.length > 0 && (
+      {step === "results" && filteredPayroll.length > 0 && (
         <>
           <div className="px-5 py-4 rounded-lg" style={{ background: "#22c55e15", border: "1px solid #22c55e40" }}>
             <div className="flex justify-between items-center flex-wrap gap-3">
@@ -437,18 +457,21 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
             <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 2px" }}>
               <thead>
                 <tr>
-                  {["Employee", "Branch", "Gross", "NAPSA", "NHIMA", "Shortages", "Advances", "Net Pay", "Leave Bal.", "Payslip"].map((h) => (
+                  {["Employee", "Branch", "Gross", "Bonus", "NAPSA", "NHIMA", "Shortages", "Advances", "Net Pay", "Leave Bal.", "Payslip"].map((h) => (
                     <th key={h} className="px-3 py-2 text-[10px] uppercase tracking-wider font-semibold border-b whitespace-nowrap"
                       style={{ textAlign: h === "Employee" || h === "Branch" || h === "Payslip" || h === "Leave Bal." ? "left" : "right", color: "#636363", borderColor: "#2a2a2a" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {payrollRecords.map((r, i) => (
+                {filteredPayroll.map((r, i) => (
                   <tr key={i} className="row-hover transition-colors">
                     <td className="px-3 py-2.5 font-semibold text-[13px] whitespace-nowrap" style={{ color: "#f5f5f5" }}>{r.employee_name}</td>
                     <td className="px-3 py-2.5 text-[12px]" style={{ color: "#a3a3a3" }}>{r.branch_name.replace(" Shop", "").replace(" UB Market", "")}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: "#f5f5f5" }}>{fmt(r.gross_salary)}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: r.bonus > 0 ? "#4ade80" : "#636363" }}>
+                      {r.bonus > 0 ? "+" + fmt(r.bonus) : "—"}
+                    </td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: "#a3a3a3" }}>{fmt(r.napsa_employee)}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: "#a3a3a3" }}>{fmt(r.nhima_employee)}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: r.shortage_amount > 0 ? "#f87171" : "#636363" }}>
@@ -477,8 +500,9 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
                 <tr style={{ borderTop: "2px solid #facc15" }}>
                   <td className="px-3 py-3 font-bold" style={{ color: "#facc15" }} colSpan={2}>TOTAL ({resultTotals.count})</td>
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(resultTotals.gross)}</td>
-                  <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(payrollRecords.reduce((a, b) => a + b.napsa_employee, 0))}</td>
-                  <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(payrollRecords.reduce((a, b) => a + b.nhima_employee, 0))}</td>
+                  <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#4ade80" }}>{fmt(filteredPayroll.reduce((a, b) => a + b.bonus, 0))}</td>
+                  <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(filteredPayroll.reduce((a, b) => a + b.napsa_employee, 0))}</td>
+                  <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(filteredPayroll.reduce((a, b) => a + b.nhima_employee, 0))}</td>
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(resultTotals.shortages)}</td>
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmt(resultTotals.advances)}</td>
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: "#facc15" }}>{fmtDec(resultTotals.net)}</td>
