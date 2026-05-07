@@ -108,10 +108,15 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     let employees: any[] = [];
     for (let i = 0; i < empIds.length; i += 40) {
       const batch = empIds.slice(i, i + 40);
-      const { data } = await supabase.from("employees").select("id, full_name, position, branch_id").in("id", batch);
+      const { data } = await supabase.from("employees").select("id, full_name, position, branch_id, employment_status").in("id", batch);
       employees = employees.concat(data || []);
     }
-    const { data: branches } = await supabase.from("branches").select("id, name").in("id", branchIds);
+    
+    // Collect current branch IDs from active employees
+    const activeBranchIds = new Set<string>();
+    employees.filter(e => e.employment_status === 'active').forEach(e => activeBranchIds.add(e.branch_id));
+    const allBranchIds = Array.from(new Set([...branchIds, ...Array.from(activeBranchIds)]));
+    const { data: branches } = await supabase.from("branches").select("id, name").in("id", allBranchIds);
 
     const empMap: Record<string, any> = {};
     employees.forEach((e) => (empMap[e.id] = e));
@@ -120,12 +125,15 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
 
     const agg: Record<string, DailySummary> = {};
     (logs || []).forEach((l: any) => {
+      // Skip non-active employees
+      if (empMap[l.employee_id]?.employment_status !== 'active') return;
       if (!agg[l.employee_id]) {
+        const emp = empMap[l.employee_id];
         agg[l.employee_id] = {
-          employee_id: l.employee_id, branch_id: l.branch_id,
-          full_name: empMap[l.employee_id]?.full_name || "Unknown",
-          branch_name: branchMap[l.branch_id]?.name || "Unknown",
-          position: empMap[l.employee_id]?.position || "",
+          employee_id: l.employee_id, branch_id: emp?.branch_id || l.branch_id,
+          full_name: emp?.full_name || "Unknown",
+          branch_name: branchMap[emp?.branch_id]?.name || branchMap[l.branch_id]?.name || "Unknown",
+          position: emp?.position || "",
           days_present: 0, days_late: 0, days_absent: 0, days_leave: 0,
           total_extra_shifts: 0, total_shortages: 0, total_advances: 0, total_fines: 0,
           total_days_logged: 0,
@@ -186,37 +194,51 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     }
 
     const empIds = Array.from(new Set(records.map((r: any) => r.employee_id)));
-    const branchIds = Array.from(new Set(records.map((r: any) => r.branch_id)));
 
-    // Fetch employees - use basic_pay (correct column name)
+    // Fetch employees with current branch and status
     let employees: any[] = [];
     for (let i = 0; i < empIds.length; i += 40) {
       const { data } = await supabase
         .from("employees")
-        .select("id, full_name, position, basic_pay")
+        .select("id, full_name, position, basic_pay, branch_id, employment_status")
         .in("id", empIds.slice(i, i + 40));
       if (data) employees = employees.concat(data);
     }
 
+    // Build employee map and collect CURRENT branch IDs
+    const empMap: Record<string, any> = {};
+    const currentBranchIds = new Set<string>();
+    employees.forEach((e) => {
+      empMap[e.id] = e;
+      if (e.branch_id) currentBranchIds.add(e.branch_id);
+    });
+
+    // Fetch all branches (current + historical)
+    const allBranchIds = Array.from(new Set([
+      ...records.map((r: any) => r.branch_id),
+      ...Array.from(currentBranchIds),
+    ]));
+
     let branches: any[] = [];
-    for (let i = 0; i < branchIds.length; i += 40) {
+    for (let i = 0; i < allBranchIds.length; i += 40) {
       const { data } = await supabase
         .from("branches")
         .select("id, name")
-        .in("id", branchIds.slice(i, i + 40));
+        .in("id", allBranchIds.slice(i, i + 40));
       if (data) branches = branches.concat(data);
     }
 
-    const empMap: Record<string, any> = {};
-    employees.forEach((e) => (empMap[e.id] = e));
     const branchMap: Record<string, any> = {};
     branches.forEach((b: any) => (branchMap[b.id] = b));
 
-    const fullRecords: FullPayrollRecord[] = records.map((r: any) => ({
+    // Only include ACTIVE employees, use their CURRENT branch
+    const fullRecords: FullPayrollRecord[] = records
+      .filter((r: any) => empMap[r.employee_id]?.employment_status === "active")
+      .map((r: any) => ({
       employee_id: r.employee_id,
       employee_name: empMap[r.employee_id]?.full_name || "Unknown",
       position: empMap[r.employee_id]?.position || "unknown",
-      branch_name: branchMap[r.branch_id]?.name || "Unknown",
+      branch_name: branchMap[empMap[r.employee_id]?.branch_id]?.name || branchMap[r.branch_id]?.name || "Unknown",
       basic_salary: +(empMap[r.employee_id]?.basic_pay || r.basic_pay || r.gross_salary || 0),
       gross_salary: +r.gross_salary,
       net_salary_due: +r.net_salary_due,
