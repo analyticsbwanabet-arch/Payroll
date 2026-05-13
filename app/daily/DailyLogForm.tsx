@@ -70,15 +70,34 @@ export default function DailyLogForm() {
   const [hasChanges, setHasChanges] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [togglingSchedule, setTogglingSchedule] = useState<string | null>(null);
+  const [editWindowDates, setEditWindowDates] = useState<{start: string; end: string}[]>([]);
 
-  // Edit lock logic: managers can only edit today and yesterday's logs
+  // Load edit window overrides when branch changes
+  useEffect(() => {
+    if (!branchId) return;
+    const loadEditWindows = async () => {
+      const { data } = await supabase
+        .from("edit_window_overrides")
+        .select("start_date, end_date")
+        .eq("branch_id", branchId);
+      setEditWindowDates((data || []).map((d: any) => ({ start: d.start_date, end: d.end_date })));
+    };
+    loadEditWindows();
+  }, [branchId]);
+
+  // Edit lock logic: managers can only edit today and yesterday's logs, unless an override exists
   const isLocked = useCallback(() => {
     if (isSuperAdmin) return false;
     const logD = new Date(logDate + "T00:00:00");
     const todayD = new Date(today() + "T00:00:00");
     const diffDays = Math.floor((todayD.getTime() - logD.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays > 1; // locked if log_date is more than 1 day ago
-  }, [logDate, isSuperAdmin]);
+    if (diffDays <= 1) return false; // today or yesterday always allowed
+    // Check edit window overrides
+    for (const w of editWindowDates) {
+      if (logDate >= w.start && logDate <= w.end) return false;
+    }
+    return true;
+  }, [logDate, isSuperAdmin, editWindowDates]);
 
   const locked = isLocked();
 
