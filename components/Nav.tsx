@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/lib/auth";
 
 const navItems = [
-  { href: "/", label: "Overview", icon: "📊", superOnly: false },
-  { href: "/branches", label: "Branches", icon: "🏢", superOnly: false },
-  { href: "/employees", label: "Employees", icon: "👥", superOnly: false },
-  { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: true },
-  { href: "/daily", label: "Daily Log", icon: "📝", superOnly: false },
-  { href: "/payroll", label: "Payroll", icon: "💰", superOnly: true },
+  { href: "/", label: "Overview", icon: "📊", superOnly: false, ownerOnly: false },
+  { href: "/branches", label: "Branches", icon: "🏢", superOnly: false, ownerOnly: false },
+  { href: "/employees", label: "Employees", icon: "👥", superOnly: false, ownerOnly: false },
+  { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: true, ownerOnly: false },
+  { href: "/daily", label: "Daily Log", icon: "📝", superOnly: false, ownerOnly: false },
+  { href: "/payroll", label: "Payroll", icon: "💰", superOnly: true, ownerOnly: false },
+  { href: "/manage", label: "Manage", icon: "⚙️", superOnly: true, ownerOnly: false },
+  { href: "/history", label: "History", icon: "📈", superOnly: true, ownerOnly: true },
 ];
 
 export default function Nav({ userRole }: { userRole: UserRole }) {
@@ -32,7 +34,7 @@ export default function Nav({ userRole }: { userRole: UserRole }) {
 
       <nav className="flex gap-1 rounded-[10px] p-1" style={{ background: "#0a0a0a", border: "1px solid #2a2a2a" }}>
         {navItems
-          .filter((item) => !item.superOnly || userRole.is_super_admin)
+          .filter((item) => (!item.superOnly || userRole.is_super_admin) && (!item.ownerOnly || userRole.is_owner) && (!(item as any).hideReadOnly || !userRole.read_only))
           .map((item) => {
           const active = pathname === item.href;
           return (
@@ -48,8 +50,8 @@ export default function Nav({ userRole }: { userRole: UserRole }) {
       <div className="flex items-center gap-3">
         <div className="text-right">
           <div className="text-[12px] font-medium" style={{ color: "#f5f5f5" }}>{userRole.display_name}</div>
-          <div className="text-[10px]" style={{ color: userRole.is_super_admin ? "#facc15" : "#22c55e" }}>
-            {userRole.is_super_admin ? "⭐ Super Admin" : "🏢 Branch Manager"}
+          <div className="text-[10px]" style={{ color: userRole.is_owner ? "#ff6b6b" : userRole.read_only ? "#22d3ee" : userRole.is_super_admin ? "#facc15" : "#22c55e" }}>
+            {userRole.is_owner ? "👑 Owner" : userRole.read_only ? "📋 Read Only" : userRole.is_super_admin ? "⭐ Super Admin" : "🏢 Branch Manager"}
           </div>
         </div>
         <form action="/auth/signout" method="post">

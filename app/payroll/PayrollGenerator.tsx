@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth, supabase } from "@/lib/auth-context";
 
 interface Period {
@@ -69,7 +69,7 @@ const fmtDec = (n: number | string) =>
   `K${Number(n || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function PayrollGenerator({ periods }: { periods: Period[] }) {
-  const { allowedBranchIds, isSuperAdmin } = useAuth();
+  const { allowedBranchIds, isSuperAdmin, readOnly } = useAuth();
   const [periodId, setPeriodId] = useState("");
   const [step, setStep] = useState<"select" | "preview" | "generating" | "results">("select");
   const [summaries, setSummaries] = useState<DailySummary[]>([]);
@@ -232,7 +232,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     branches.forEach((b: any) => (branchMap[b.id] = b));
 
     // Only include ACTIVE employees, use their CURRENT branch
-    const fullRecords: FullPayrollRecord[] = records
+    let fullRecords: FullPayrollRecord[] = records
       .filter((r: any) => empMap[r.employee_id]?.employment_status === "active")
       .map((r: any) => ({
       employee_id: r.employee_id,
@@ -261,6 +261,49 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
 
     setPayrollRecords(fullRecords);
 
+    // Fetch LIVE daily log summaries for this month to overlay on payroll records
+    const monthStart = selectedPeriod?.start_date || "";
+    const monthEnd = selectedPeriod?.end_date || "";
+    if (monthStart) {
+      const { data: logs } = await supabase
+        .from("daily_logs")
+        .select("employee_id, shortage_amount, advance_amount, fine_amount, bonus_amount, extra_shifts_worked, attendance_status")
+        .gte("log_date", monthStart)
+        .lte("log_date", monthEnd);
+
+      if (logs && logs.length > 0) {
+        // Aggregate daily logs per employee
+        const logAgg: Record<string, { shortages: number; advances: number; fines: number; bonuses: number; extraShifts: number; absentDays: number }> = {};
+        logs.forEach((l: any) => {
+          if (!logAgg[l.employee_id]) logAgg[l.employee_id] = { shortages: 0, advances: 0, fines: 0, bonuses: 0, extraShifts: 0, absentDays: 0 };
+          const a = logAgg[l.employee_id];
+          a.shortages += +(l.shortage_amount || 0);
+          a.advances += +(l.advance_amount || 0);
+          a.fines += +(l.fine_amount || 0);
+          a.bonuses += +(l.bonus_amount || 0);
+          a.extraShifts += +(l.extra_shifts_worked || 0);
+          if (l.attendance_status === "absent_no_reason" || l.attendance_status === "absent") a.absentDays++;
+        });
+
+        // Overlay live daily log data onto payroll records
+        fullRecords = fullRecords.map(r => {
+          const live = logAgg[r.employee_id];
+          if (!live) return r;
+          return {
+            ...r,
+            shortage_amount: live.shortages || r.shortage_amount,
+            advances: live.advances || r.advances,
+            fines: live.fines || r.fines,
+            bonus: live.bonuses || r.bonus,
+            extra_shifts_count: live.extraShifts || r.extra_shifts_count,
+            absent_days: live.absentDays || r.absent_days,
+            _hasLiveData: true,
+          };
+        });
+        setPayrollRecords(fullRecords);
+      }
+    }
+
     // Fetch leave balances for all employees
     const endDate = selectedPeriod?.end_date || new Date().toISOString().split("T")[0];
     const leaveMap: Record<string, any> = {};
@@ -288,6 +331,14 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       } : undefined,
     })));
   };
+
+  // Auto-load existing payroll records (with live daily log data) when period changes
+  useEffect(() => {
+    if (periodId) {
+      fetchPayrollRecords();
+      if (step === "select") setStep("results");
+    }
+  }, [periodId]);
 
   const downloadPayslip = async (record: FullPayrollRecord) => {
     setDownloading(record.employee_id);
@@ -351,7 +402,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       <div className="chart-card">
         <div className="text-[13px] font-semibold mb-3" style={{ color: "#a3a3a3" }}>Step 1: Select Payroll Period</div>
         <div className="flex gap-3 items-end flex-wrap">
-          <select value={periodId} onChange={(e) => { setPeriodId(e.target.value); setStep("select"); setPayrollRecords([]); setSummaries([]); setFilterBranch("all"); }}
+          <select value={periodId} onChange={(e) => { setPeriodId(e.target.value); setPayrollRecords([]); setSummaries([]); setFilterBranch("all"); setStep("select"); }}
             className="px-4 py-2.5 rounded-lg text-[13px] min-w-[220px] outline-none"
             style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }}>
             <option value="">Select period...</option>
@@ -359,13 +410,15 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
               <option key={p.id} value={p.id}>{p.period_name} {p.is_finalized ? "✅ (Finalized)" : ""}</option>
             ))}
           </select>
-          {periodId && step === "select" && (
-            <button onClick={loadPreview} disabled={loading}
-              className="px-6 py-2.5 rounded-lg font-semibold text-[13px]" style={{ background: "#22c55e", color: "#000" }}>
-              {loading ? "Loading..." : "📋 Preview Daily Logs"}
-            </button>
+          {periodId && (
+            <>
+              <button onClick={loadPreview} disabled={loading}
+                className="px-6 py-2.5 rounded-lg font-semibold text-[13px]" style={{ background: "#22c55e", color: "#000" }}>
+                {loading ? "Loading..." : "📋 Preview Daily Logs"}
+              </button>
+            </>
           )}
-          {periodId && step !== "select" && branchNames.length > 1 && (
+          {periodId && branchNames.length > 1 && (
             <div>
               <label className="block text-[10px] uppercase tracking-wider font-medium mb-1" style={{ color: "#636363" }}>Filter by Store</label>
               <select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}
@@ -449,7 +502,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       )}
 
       {/* Results */}
-      {step === "results" && filteredPayroll.length > 0 && (
+      {filteredPayroll.length > 0 && (
         <>
           <div className="px-5 py-4 rounded-lg" style={{ background: "#22c55e15", border: "1px solid #22c55e40" }}>
             <div className="flex justify-between items-center flex-wrap gap-3">

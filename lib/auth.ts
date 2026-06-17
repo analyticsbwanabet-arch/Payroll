@@ -6,6 +6,9 @@ export interface UserRole {
   role: "super_admin" | "branch_manager";
   branch_ids: string[];
   is_super_admin: boolean;
+  is_owner: boolean;
+  read_only: boolean;
+  log_name: string;
 }
 
 export async function getCurrentUser(): Promise<{ user: any; role: UserRole | null }> {
@@ -32,6 +35,9 @@ export async function getCurrentUser(): Promise<{ user: any; role: UserRole | nu
       role: roleData.role,
       branch_ids: roleData.branch_ids || [],
       is_super_admin: roleData.role === "super_admin",
+      is_owner: roleData.is_owner || false,
+      read_only: roleData.read_only || false,
+      log_name: roleData.log_name || roleData.display_name,
     },
   };
 }

@@ -9,7 +9,7 @@ interface ScheduleInfo { employee_id: string; is_scheduled: boolean; schedule_ty
 interface LogEntry {
   employee_id: string; attendance_status: string; arrival_time: string | null;
   leave_type: string | null; shortage_amount: number; advance_amount: number;
-  fine_amount: number; bonus_amount: number; extra_shifts_worked: number; comments: string; saved: boolean;
+  fine_amount: number; bonus_amount: number; extra_shifts_worked: number; comments: string; saved: boolean; dirty: boolean;
   last_modified_by: string | null; last_modified_at: string | null;
   logged_by: string | null; created_at: string | null;
 }
@@ -57,7 +57,7 @@ function shortEmail(email: string | null) {
 }
 
 export default function DailyLogForm() {
-  const { allowedBranchIds, isSuperAdmin, email: userEmail, displayName, loading: authLoading } = useAuth();
+  const { allowedBranchIds, isSuperAdmin, readOnly, email: userEmail, displayName, logName, loading: authLoading } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchId, setBranchId] = useState("");
   const [logDate, setLogDate] = useState(today());
@@ -87,6 +87,7 @@ export default function DailyLogForm() {
 
   // Edit lock logic: managers can only edit today and yesterday's logs, unless an override exists
   const isLocked = useCallback(() => {
+    if (readOnly) return true; // Read-only users can never edit
     if (isSuperAdmin) return false;
     const logD = new Date(logDate + "T00:00:00");
     const todayD = new Date(today() + "T00:00:00");
@@ -139,6 +140,7 @@ export default function DailyLogForm() {
         extra_shifts_worked: existing ? +existing.extra_shifts_worked : 0,
         comments: existing?.comments || "",
         saved: !!existing,
+        dirty: false,
         last_modified_by: existing?.last_modified_by || existing?.logged_by || null,
         last_modified_at: existing?.last_modified_at || existing?.updated_at || existing?.created_at || null,
         logged_by: existing?.logged_by || null,
@@ -181,7 +183,7 @@ export default function DailyLogForm() {
     } else {
       // Create override → flip the schedule
       const newStatus = !currentlyOn;
-      const modifierName = displayName || userEmail || "admin";
+      const modifierName = logName || displayName || userEmail || "admin";
       await supabase.from("schedule_overrides").upsert({
         employee_id: empId, override_date: logDate, is_working: newStatus,
         reason: `Manual override by ${modifierName}`, created_by: modifierName,
@@ -237,7 +239,7 @@ export default function DailyLogForm() {
 
   const updateEntry = (empId: string, field: string, value: any) => {
     if (locked) return;
-    setEntries((prev) => ({ ...prev, [empId]: { ...prev[empId], [field]: value, saved: false } }));
+    setEntries((prev) => ({ ...prev, [empId]: { ...prev[empId], [field]: value, saved: false, dirty: true } }));
     setHasChanges(true); setSaveMsg(null);
   };
 
@@ -247,7 +249,7 @@ export default function DailyLogForm() {
       const updated = { ...prev };
       Object.keys(updated).forEach((id) => {
         const isOn = schedule[id]?.is_scheduled ?? true;
-        updated[id] = { ...updated[id], attendance_status: isOn ? "present" : "off_day", saved: false };
+        updated[id] = { ...updated[id], attendance_status: isOn ? "present" : "off_day", saved: false, dirty: true };
       });
       return updated;
     });
@@ -258,7 +260,7 @@ export default function DailyLogForm() {
     if (locked) return;
     setEntries((prev) => {
       const updated = { ...prev };
-      Object.keys(updated).forEach((id) => { updated[id] = { ...updated[id], attendance_status: "present", saved: false }; });
+      Object.keys(updated).forEach((id) => { updated[id] = { ...updated[id], attendance_status: "present", saved: false, dirty: true }; });
       return updated;
     });
     setHasChanges(true);
@@ -268,7 +270,7 @@ export default function DailyLogForm() {
     if (locked) return;
     setSaving(true); setSaveMsg(null);
 
-    const modifierName = displayName || userEmail || "unknown";
+    const modifierName = logName || displayName || userEmail || "unknown";
     const rows = Object.values(entries).map((e) => ({
       employee_id: e.employee_id, branch_id: branchId, log_date: logDate,
       attendance_status: e.attendance_status, arrival_time: e.arrival_time || null,
@@ -278,8 +280,8 @@ export default function DailyLogForm() {
       extra_shifts_worked: e.attendance_status === "extra_shift" ? (e.extra_shifts_worked || 1) : e.extra_shifts_worked || 0,
       comments: e.comments || null,
       logged_by: e.logged_by || modifierName,
-      last_modified_by: modifierName,
-      last_modified_at: new Date().toISOString(),
+      last_modified_by: e.dirty ? modifierName : (e.last_modified_by || modifierName),
+      last_modified_at: e.dirty ? new Date().toISOString() : (e.last_modified_at || new Date().toISOString()),
     }));
 
     const { error } = await supabase.from("daily_logs").upsert(rows, { onConflict: "employee_id,log_date" });
@@ -292,7 +294,14 @@ export default function DailyLogForm() {
       setEntries((prev) => {
         const updated = { ...prev };
         Object.keys(updated).forEach((id) => {
-          updated[id] = { ...updated[id], saved: true, last_modified_by: modifierName, last_modified_at: now };
+          const wasDirty = updated[id].dirty;
+          updated[id] = {
+            ...updated[id],
+            saved: true,
+            dirty: false,
+            last_modified_by: wasDirty ? modifierName : updated[id].last_modified_by,
+            last_modified_at: wasDirty ? now : updated[id].last_modified_at,
+          };
         });
         return updated;
       });

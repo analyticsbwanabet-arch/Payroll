@@ -10,7 +10,10 @@ export const supabase = supabaseClient;
 interface AuthState {
   allowedBranchIds: string[] | null; // null = super admin (all branches)
   isSuperAdmin: boolean;
+  isOwner: boolean;
+  readOnly: boolean;
   displayName: string;
+  logName: string;
   email: string;
   loading: boolean;
 }
@@ -18,7 +21,10 @@ interface AuthState {
 const AuthContext = createContext<AuthState>({
   allowedBranchIds: null,
   isSuperAdmin: false,
+  isOwner: false,
+  readOnly: false,
   displayName: "",
+  logName: "",
   email: "",
   loading: true,
 });
@@ -35,12 +41,18 @@ export function AuthProvider({ children, initialRole }: {
     role: string;
     branch_ids: string[];
     is_super_admin: boolean;
+    is_owner: boolean;
+    read_only: boolean;
+    log_name: string;
   } | null;
 }) {
   const [authState, setAuthState] = useState<AuthState>({
     allowedBranchIds: initialRole?.is_super_admin ? null : (initialRole?.branch_ids || []),
     isSuperAdmin: initialRole?.is_super_admin || false,
+    isOwner: initialRole?.is_owner || false,
+    readOnly: initialRole?.read_only || false,
     displayName: initialRole?.display_name || "",
+    logName: initialRole?.log_name || initialRole?.display_name || "",
     email: initialRole?.email || "",
     loading: !initialRole,
   });
@@ -67,7 +79,10 @@ export function AuthProvider({ children, initialRole }: {
         setAuthState({
           allowedBranchIds: roleData.role === "super_admin" ? null : (roleData.branch_ids || []),
           isSuperAdmin: roleData.role === "super_admin",
+          isOwner: roleData.is_owner || false,
+          readOnly: roleData.read_only || false,
           displayName: roleData.display_name,
+          logName: roleData.log_name || roleData.display_name,
           email: roleData.email,
           loading: false,
         });
