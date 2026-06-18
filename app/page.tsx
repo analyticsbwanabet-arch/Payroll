@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase, useAuth } from "@/lib/auth-context";
 import StatCard from "@/components/StatCard";
 import { NetPayChart, DistributionChart, DeductionsChart } from "@/components/Charts";
@@ -15,6 +16,13 @@ interface BranchSummary {
 
 export default function OverviewPage() {
   const { isSuperAdmin, allowedBranchIds, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !isSuperAdmin) {
+      router.replace("/employees");
+    }
+  }, [authLoading, isSuperAdmin, router]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [allBranches, setAllBranches] = useState<BranchSummary[]>([]);

@@ -68,7 +68,7 @@ const fmt = (n: number | string) =>
 const fmtDec = (n: number | string) =>
   `K${Number(n || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export default function PayrollGenerator({ periods }: { periods: Period[] }) {
+export default function PayrollGenerator({ periods, reviewOnly = false }: { periods: Period[]; reviewOnly?: boolean }) {
   const { allowedBranchIds, isSuperAdmin, readOnly } = useAuth();
   const [periodId, setPeriodId] = useState("");
   const [step, setStep] = useState<"select" | "preview" | "generating" | "results">("select");
@@ -394,7 +394,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold" style={{ color: "#facc15" }}>Generate Payroll</h1>
+        <h1 className="text-xl font-bold" style={{ color: "#facc15" }}>{reviewOnly ? "Payroll Review" : "Generate Payroll"}</h1>
         <p className="text-[13px] mt-1" style={{ color: "#636363" }}>Review daily logs, generate payroll, and download payslips</p>
       </div>
 
@@ -453,9 +453,9 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
           <div className="chart-card overflow-x-auto">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
               <div className="text-[13px] font-semibold" style={{ color: "#a3a3a3" }}>Step 2: Review — {selectedPeriod?.period_name}</div>
-              <button onClick={generatePayroll} className="px-6 py-2.5 rounded-lg font-bold text-[14px]" style={{ background: "#facc15", color: "#000" }}>
+              {!reviewOnly && <button onClick={generatePayroll} className="px-6 py-2.5 rounded-lg font-bold text-[14px]" style={{ background: "#facc15", color: "#000" }}>
                 ⚡ Generate Payroll for {previewTotals.logged + noLogsCount} Employees
-              </button>
+              </button>}
             </div>
 
             {filteredSummaries.length > 0 ? (
@@ -502,7 +502,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       )}
 
       {/* Results */}
-      {filteredPayroll.length > 0 && (
+      {!reviewOnly && filteredPayroll.length > 0 && (
         <>
           <div className="px-5 py-4 rounded-lg" style={{ background: "#22c55e15", border: "1px solid #22c55e40" }}>
             <div className="flex justify-between items-center flex-wrap gap-3">
