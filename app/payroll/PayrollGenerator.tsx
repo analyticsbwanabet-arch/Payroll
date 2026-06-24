@@ -26,6 +26,7 @@ interface DailySummary {
   total_advances: number;
   total_fines: number;
   total_days_logged: number;
+  days_worked: number;
 }
 
 interface FullPayrollRecord {
@@ -137,10 +138,12 @@ export default function PayrollGenerator({ periods, reviewOnly = false }: { peri
           days_present: 0, days_late: 0, days_absent: 0, days_leave: 0,
           total_extra_shifts: 0, total_shortages: 0, total_advances: 0, total_fines: 0,
           total_days_logged: 0,
+          days_worked: 0,
         };
       }
       const s = agg[l.employee_id];
       s.total_days_logged++;
+      if (['present','late','night_shift','extra_shift','trainee'].includes(l.attendance_status)) s.days_worked++;
       if (l.attendance_status === "present") s.days_present++;
       if (l.attendance_status === "late") s.days_late++;
       if (l.attendance_status === "absent") s.days_absent++;
@@ -473,7 +476,7 @@ export default function PayrollGenerator({ periods, reviewOnly = false }: { peri
                     <tr key={i} className="row-hover transition-colors">
                       <td className="px-3 py-2.5 font-semibold text-[13px] whitespace-nowrap" style={{ color: "#f5f5f5" }}>{s.full_name}</td>
                       <td className="px-3 py-2.5 text-[12px]" style={{ color: "#a3a3a3" }}>{s.branch_name.replace(" Shop", "").replace(" UB Market", "")}</td>
-                      <td className="px-3 py-2.5 text-right text-[12px]" style={{ color: "#f5f5f5" }}>{s.total_days_logged}</td>
+                      <td className="px-3 py-2.5 text-right text-[12px]" style={{ color: "#f5f5f5" }}>{s.days_worked}</td>
                       <td className="px-3 py-2.5 text-right text-[12px]" style={{ color: "#4ade80" }}>{s.days_present}</td>
                       <td className="px-3 py-2.5 text-right text-[12px]" style={{ color: s.days_late > 0 ? "#facc15" : "#636363" }}>{s.days_late || "—"}</td>
                       <td className="px-3 py-2.5 text-right text-[12px]" style={{ color: s.days_absent > 0 ? "#f87171" : "#636363" }}>{s.days_absent || "—"}</td>

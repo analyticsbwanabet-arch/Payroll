@@ -106,14 +106,17 @@ export default function DailyLogForm() {
     if (!branchId || !logDate) return;
     setLoading(true); setSaveMsg(null);
 
-    const [{ data: emps }, { data: logs }, { data: sched }] = await Promise.all([
-      supabase.from("employees").select("id, full_name, position")
+    const [{ data: rawEmps }, { data: logs }, { data: sched }] = await Promise.all([
+      supabase.from("employees").select("id, full_name, position, date_started")
         .eq("branch_id", branchId).eq("employment_status", "active").order("full_name"),
       supabase.from("daily_logs").select("*").eq("branch_id", branchId).eq("log_date", logDate),
       supabase.rpc("get_branch_schedule", { p_branch_id: branchId, p_date: logDate }),
     ]);
 
-    setEmployees(emps || []);
+    // Filter out employees who hadn't started yet on this date
+    const emps = (rawEmps || []).filter((e: any) => !e.date_started || e.date_started <= logDate);
+
+    setEmployees(emps);
 
     const schedMap: Record<string, ScheduleInfo> = {};
     (sched || []).forEach((s: any) => {
