@@ -93,7 +93,8 @@ export default function PayrollGenerator({ periods, reviewOnly = false }: { peri
       .from("daily_logs")
       .select("employee_id, branch_id, attendance_status, shortage_amount, advance_amount, fine_amount, extra_shifts_worked")
       .gte("log_date", monthStart)
-      .lte("log_date", selectedPeriod?.end_date || "");
+      .lte("log_date", selectedPeriod?.end_date || "")
+      .limit(10000);
 
     if (!isSuperAdmin && allowedBranchIds && allowedBranchIds.length > 0) {
       logsQuery = logsQuery.in("branch_id", allowedBranchIds);
@@ -272,7 +273,8 @@ export default function PayrollGenerator({ periods, reviewOnly = false }: { peri
         .from("daily_logs")
         .select("employee_id, shortage_amount, advance_amount, fine_amount, bonus_amount, extra_shifts_worked, attendance_status")
         .gte("log_date", monthStart)
-        .lte("log_date", monthEnd);
+        .lte("log_date", monthEnd)
+        .limit(10000);
 
       if (logs && logs.length > 0) {
         // Aggregate daily logs per employee
