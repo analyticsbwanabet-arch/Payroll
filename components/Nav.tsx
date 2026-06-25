@@ -10,6 +10,7 @@ const navItems = [
   { href: "/employees", label: "Employees", icon: "👥", superOnly: false, ownerOnly: false },
   { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: true, ownerOnly: false },
   { href: "/daily", label: "Daily Log", icon: "📝", superOnly: false, ownerOnly: false },
+  { href: "/summary", label: "Monthly Summary", icon: "📊", superOnly: false, ownerOnly: false },
   { href: "/leave", label: "Leave", icon: "🏖️", superOnly: false, ownerOnly: false },
   { href: "/payroll", label: "Payroll Review", icon: "💰", superOnly: false, ownerOnly: false },
   { href: "/manage", label: "Manage", icon: "⚙️", superOnly: true, ownerOnly: false },
