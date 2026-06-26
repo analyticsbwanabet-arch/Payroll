@@ -7,12 +7,12 @@ import type { UserRole } from "@/lib/auth";
 const navItems = [
   { href: "/", label: "Overview", icon: "📊", superOnly: true, ownerOnly: false },
   { href: "/branches", label: "Branches", icon: "🏢", superOnly: true, ownerOnly: false },
-  { href: "/employees", label: "Employees", icon: "👥", superOnly: false, ownerOnly: false },
-  { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: true, ownerOnly: false },
+  { href: "/employees", label: "Employees", icon: "👥", superOnly: true, ownerOnly: false },
+  { href: "/directory", label: "Staff Directory", icon: "📇", superOnly: false, ownerOnly: false },
   { href: "/daily", label: "Daily Log", icon: "📝", superOnly: false, ownerOnly: false },
   { href: "/summary", label: "Monthly Summary", icon: "📊", superOnly: false, ownerOnly: false },
   { href: "/leave", label: "Leave", icon: "🏖️", superOnly: false, ownerOnly: false },
-  { href: "/payroll", label: "Payroll Review", icon: "💰", superOnly: false, ownerOnly: false },
+  { href: "/payroll", label: "Payroll", icon: "💰", superOnly: true, ownerOnly: false },
   { href: "/manage", label: "Manage", icon: "⚙️", superOnly: true, ownerOnly: false },
   { href: "/history", label: "History", icon: "📈", superOnly: true, ownerOnly: true },
 ];

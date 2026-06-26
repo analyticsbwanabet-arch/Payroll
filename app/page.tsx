@@ -20,7 +20,7 @@ export default function OverviewPage() {
 
   useEffect(() => {
     if (!authLoading && !isSuperAdmin) {
-      router.replace("/employees");
+      router.replace("/directory");
     }
   }, [authLoading, isSuperAdmin, router]);
   const [periods, setPeriods] = useState<Period[]>([]);

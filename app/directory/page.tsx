@@ -9,9 +9,8 @@ export const revalidate = 60;
 export default async function DirectoryPage() {
   const { role } = await getCurrentUser();
 
-  // Only super admins can access this page
-  if (!role?.is_super_admin) {
-    redirect("/");
+  if (!role) {
+    redirect("/login");
   }
 
   const contacts = await getEmployeeContacts(null);
@@ -22,12 +21,11 @@ export default async function DirectoryPage() {
   (branches || []).forEach((b: any) => { branchMap[b.id] = b.name; });
 
   // Get employee branch assignments
-  let empQuery = supabase
+  const { data: employees } = await supabase
     .from("employees")
     .select("id, branch_id, position, employment_status")
     .eq("employment_status", "active");
 
-  const { data: employees } = await empQuery;
   const empBranchMap: Record<string, string> = {};
   const empPosMap: Record<string, string> = {};
   (employees || []).forEach((e: any) => {
@@ -36,11 +34,17 @@ export default async function DirectoryPage() {
   });
 
   // Attach branch name and position to contacts
-  const enriched = contacts.map((c) => ({
+  let enriched = contacts.map((c) => ({
     ...c,
     branch_name: empBranchMap[c.employee_id] || "Unknown",
     position: empPosMap[c.employee_id] || "unknown",
   }));
+
+  // Filter by branch for non-super-admins
+  if (!role.is_super_admin && role.branch_ids && role.branch_ids.length > 0) {
+    const allowedBranchNames = role.branch_ids.map((id: string) => branchMap[id]).filter(Boolean);
+    enriched = enriched.filter((c) => allowedBranchNames.includes(c.branch_name));
+  }
 
   // Get unique branch names for filtering
   const branchNames = Array.from(new Set(enriched.map((c) => c.branch_name))).sort();
