@@ -107,14 +107,19 @@ export default function DailyLogForm() {
     setLoading(true); setSaveMsg(null);
 
     const [{ data: rawEmps }, { data: logs }, { data: sched }] = await Promise.all([
-      supabase.from("employees").select("id, full_name, position, date_started")
+      supabase.from("employees").select("id, full_name, position, date_started, is_protected")
         .eq("branch_id", branchId).eq("employment_status", "active").order("full_name"),
       supabase.from("daily_logs").select("*").eq("branch_id", branchId).eq("log_date", logDate),
       supabase.rpc("get_branch_schedule", { p_branch_id: branchId, p_date: logDate }),
     ]);
 
     // Filter out employees who hadn't started yet on this date
-    const emps = (rawEmps || []).filter((e: any) => !e.date_started || e.date_started <= logDate);
+    // Filter out protected employees for branch managers
+    const emps = (rawEmps || []).filter((e: any) => {
+      if (e.date_started && e.date_started > logDate) return false;
+      if (e.is_protected && !isSuperAdmin) return false;
+      return true;
+    });
 
     setEmployees(emps);
 

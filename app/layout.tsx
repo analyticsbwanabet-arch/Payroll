@@ -3,6 +3,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import { getCurrentUser } from "@/lib/auth";
 import { AuthProvider } from "@/lib/auth-context";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   title: "BwanaBet Payroll",
@@ -10,6 +11,21 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headersList = await headers();
+  const pathname = headersList.get("x-next-url") || headersList.get("x-invoke-path") || "";
+  const isPayslipView = pathname.startsWith("/payslip/") || pathname.startsWith("/contract/");
+
+  // Skip auth and nav for public payslip viewer
+  if (isPayslipView) {
+    return (
+      <html lang="en">
+        <body style={{ margin: 0, padding: 0, background: "#f5f5f5", minHeight: "100vh" }}>
+          {children}
+        </body>
+      </html>
+    );
+  }
+
   const { role } = await getCurrentUser();
 
   return (

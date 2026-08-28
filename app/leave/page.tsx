@@ -83,7 +83,7 @@ export default function LeavePage() {
         return allowedBranchIds.includes(e.branch_id);
       })
       .map((e: any) => {
-        const bal = balanceMap[e.id] || { sick_adj: 10, compassionate_adj: 7, maternity_adj: 30 };
+        const bal = balanceMap[e.id] || { sick_adj: 10, compassionate_adj: 7, maternity_adj: 120 };
         const used = usage[e.id] || { sick: 0, annual: 0, maternity: 0, compassionate: 0 };
         const empStart = e.date_started ? new Date(e.date_started) : trackingStart;
         const accrualStart = empStart > trackingStart ? empStart : trackingStart;
@@ -95,7 +95,7 @@ export default function LeavePage() {
           annual_entitled: annualEntitled, annual_used: used.annual, annual_remaining: annualEntitled - used.annual,
           sick_entitled: +(bal.sick_adj || 10), sick_used: used.sick, sick_remaining: +(bal.sick_adj || 10) - used.sick,
           compassionate_entitled: +(bal.compassionate_adj || 7), compassionate_used: used.compassionate, compassionate_remaining: +(bal.compassionate_adj || 7) - used.compassionate,
-          maternity_entitled: +(bal.maternity_adj || 30), maternity_used: used.maternity, maternity_remaining: +(bal.maternity_adj || 30) - used.maternity,
+          maternity_entitled: +(bal.maternity_adj || 120), maternity_used: used.maternity, maternity_remaining: +(bal.maternity_adj || 120) - used.maternity,
         };
       });
 
@@ -197,7 +197,7 @@ export default function LeavePage() {
         <SummaryCard title="Annual Leave" entitled={totals.annual_entitled} used={totals.annual_used} remaining={totals.annual_remaining} color="#22d3ee" sub="2 days/month" />
         <SummaryCard title="Sick Leave" entitled={totals.sick_entitled} used={totals.sick_used} remaining={totals.sick_remaining} color="#fbbf24" sub="10 days/year" />
         <SummaryCard title="Compassionate" entitled={totals.compassionate_entitled} used={totals.compassionate_used} remaining={totals.compassionate_remaining} color="#a78bfa" sub="7 days/year" />
-        <SummaryCard title="Maternity" entitled={totals.maternity_entitled} used={totals.maternity_used} remaining={totals.maternity_remaining} color="#f472b6" sub="30 days" />
+        <SummaryCard title="Maternity" entitled={totals.maternity_entitled} used={totals.maternity_used} remaining={totals.maternity_remaining} color="#f472b6" sub="120 days (after 2yrs)" />
       </div>
 
       {/* Employee detail panel */}

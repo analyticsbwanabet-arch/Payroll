@@ -8,8 +8,8 @@ export function middleware(request: NextRequest) {
     (c) => c.name.includes("-auth-token") && c.value.length > 10
   );
 
-  // Not logged in and not on login/auth page → redirect to login
-  if (!hasAuth && !pathname.startsWith("/login") && !pathname.startsWith("/auth")) {
+  // Not logged in and not on login/auth/payslip page → redirect to login
+  if (!hasAuth && !pathname.startsWith("/login") && !pathname.startsWith("/auth") && !pathname.startsWith("/payslip") && !pathname.startsWith("/contract") && !pathname.startsWith("/api/payslip-view") && !pathname.startsWith("/api/contract-view") && !pathname.startsWith("/api/contract-sign")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -22,7 +22,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  // Pass pathname as header for layout detection
+  const response = NextResponse.next();
+  response.headers.set("x-next-url", pathname);
+  return response;
 }
 
 export const config = {

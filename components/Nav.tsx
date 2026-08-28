@@ -14,6 +14,7 @@ const navItems = [
   { href: "/leave", label: "Leave", icon: "🏖️", superOnly: false, ownerOnly: false },
   { href: "/payroll", label: "Payroll", icon: "💰", superOnly: true, ownerOnly: false },
   { href: "/manage", label: "Manage", icon: "⚙️", superOnly: true, ownerOnly: false },
+  { href: "/contracts", label: "Contracts", icon: "📝", superOnly: true, ownerOnly: false },
   { href: "/history", label: "History", icon: "📈", superOnly: true, ownerOnly: true },
 ];
 

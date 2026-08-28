@@ -6,9 +6,11 @@ import { useAuth, supabase } from "@/lib/auth-context";
 interface Period { id: string; period_name: string; start_date: string; end_date: string; is_finalized: boolean; }
 
 interface FullPayrollRecord {
-  employee_id: string; employee_name: string; position: string; branch_name: string;
+  employee_id: string; employee_name: string; position: string; branch_name: string; email: string;
+  nrc_number: string; tpin: string; ssn: string; bank_name: string; bank_account_number: string; mobile_number: string; date_started: string;
+  basic_pay: number; housing_allowance: number; transport_allowance: number; lunch_allowance: number;
   basic_salary: number; gross_salary: number; net_salary_due: number;
-  napsa_employee: number; nhima_employee: number; paye_tax: number;
+  napsa_employee: number; napsa_employer: number; nhima_employee: number; nhima_employer: number; paye_tax: number;
   extra_shifts_count: number; extra_shift_total: number; bonus: number;
   shortage_amount: number; advances: number; fines: number;
   absent_days: number; absence_deduction: number; other_deductions: number; comments: string | null;
@@ -20,12 +22,17 @@ const fmtDec = (n: number | string) => `K${Number(n || 0).toLocaleString("en", {
 export default function PayrollGenerator({ periods }: { periods: Period[] }) {
   const { allowedBranchIds, isSuperAdmin, readOnly } = useAuth();
   const [periodId, setPeriodId] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [cutoffDate, setCutoffDate] = useState("");
   const [payrollRecords, setPayrollRecords] = useState<FullPayrollRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [filterBranch, setFilterBranch] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+  const [sendResults, setSendResults] = useState<{ sent: number; failed: number; results: any[] } | null>(null);
 
   const selectedPeriod = periods.find((p) => p.id === periodId);
 
@@ -43,7 +50,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     const empIds = Array.from(new Set(records.map((r: any) => r.employee_id)));
     let employees: any[] = [];
     for (let i = 0; i < empIds.length; i += 40) {
-      const { data } = await supabase.from("employees").select("id, full_name, position, basic_pay, branch_id, employment_status").in("id", empIds.slice(i, i + 40));
+      const { data } = await supabase.from("employees").select("id, full_name, position, basic_pay, housing_allowance, transport_allowance, lunch_allowance, branch_id, employment_status, email, nrc_number, tpin, social_security_number, bank_name, bank_account_number, mobile_money_number, phone, date_started").in("id", empIds.slice(i, i + 40));
       if (data) employees = employees.concat(data);
     }
     const empMap: Record<string, any> = {};
@@ -65,10 +72,23 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
         employee_id: r.employee_id,
         employee_name: empMap[r.employee_id]?.full_name || "Unknown",
         position: empMap[r.employee_id]?.position || "unknown",
+        email: empMap[r.employee_id]?.email || "",
+        nrc_number: empMap[r.employee_id]?.nrc_number || "",
+        tpin: empMap[r.employee_id]?.tpin || "",
+        ssn: empMap[r.employee_id]?.social_security_number || "",
+        bank_name: empMap[r.employee_id]?.bank_name || "",
+        bank_account_number: empMap[r.employee_id]?.bank_account_number || "",
+        mobile_number: empMap[r.employee_id]?.mobile_money_number || empMap[r.employee_id]?.phone || "",
+        date_started: empMap[r.employee_id]?.date_started || "",
         branch_name: branchMap[empMap[r.employee_id]?.branch_id]?.name || branchMap[r.branch_id]?.name || "Unknown",
+        basic_pay: +(empMap[r.employee_id]?.basic_pay || r.basic_pay || 0),
+        housing_allowance: +(empMap[r.employee_id]?.housing_allowance || r.housing_allowance || 0),
+        transport_allowance: +(empMap[r.employee_id]?.transport_allowance || r.transport_allowance || 0),
+        lunch_allowance: +(empMap[r.employee_id]?.lunch_allowance || r.lunch_allowance || 0),
         basic_salary: +(empMap[r.employee_id]?.basic_pay || r.basic_pay || r.gross_salary || 0),
         gross_salary: +(r.gross_salary || 0), net_salary_due: +(r.net_salary_due || 0),
-        napsa_employee: +(r.napsa_employee || 0), nhima_employee: +(r.nhima_employee || 0), paye_tax: +(r.paye_tax || 0),
+        napsa_employee: +(r.napsa_employee || 0), napsa_employer: +(r.napsa_employer || 0),
+        nhima_employee: +(r.nhima_employee || 0), nhima_employer: +(r.nhima_employer || 0), paye_tax: +(r.paye_tax || 0),
         extra_shifts_count: +(r.extra_shifts_count || 0), extra_shift_total: +(r.extra_shift_total || 0),
         bonus: +(r.bonus || 0), shortage_amount: +(r.shortage_amount || 0), advances: +(r.advances || 0),
         fines: +(r.fines || 0), absent_days: +(r.absent_days || 0), absence_deduction: +(r.absence_deduction || 0),
@@ -88,7 +108,8 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
 
     const { error: rpcErr } = await supabase.rpc("generate_payroll_from_daily_logs", {
       p_period_id: periodId,
-      p_month: selectedPeriod.start_date,
+      p_month: startDate || selectedPeriod.start_date,
+      p_cutoff_date: cutoffDate || null,
     });
 
     if (rpcErr) { setError(rpcErr.message); setGenerating(false); return; }
@@ -99,20 +120,59 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
   const downloadPayslip = async (record: FullPayrollRecord) => {
     setDownloading(record.employee_id);
     const { downloadPayslip: dl } = await import("@/lib/payslip");
-    dl({ ...record, period_name: selectedPeriod?.period_name || "", period_start: selectedPeriod?.start_date || "", period_end: selectedPeriod?.end_date || "" });
+    await dl({ ...record, period_name: selectedPeriod?.period_name || "", period_start: startDate || selectedPeriod?.start_date || "", period_end: cutoffDate || selectedPeriod?.end_date || "" });
     setDownloading(null);
   };
 
   const downloadAllPayslips = async () => {
     setDownloading("all");
     const { downloadAllPayslips: dlAll } = await import("@/lib/payslip");
-    dlAll(filteredPayroll.map((r) => ({ ...r, period_name: selectedPeriod?.period_name || "", period_start: selectedPeriod?.start_date || "", period_end: selectedPeriod?.end_date || "" })));
+    await dlAll(filteredPayroll.map((r) => ({ ...r, period_name: selectedPeriod?.period_name || "", period_start: startDate || selectedPeriod?.start_date || "", period_end: cutoffDate || selectedPeriod?.end_date || "" })));
     setDownloading(null);
   };
+
+  // Selection helpers - moved below filteredPayroll
 
   // Branch filter
   const branchNames = Array.from(new Set(payrollRecords.map(r => r.branch_name))).sort();
   const filteredPayroll = filterBranch === "all" ? payrollRecords : payrollRecords.filter(r => r.branch_name === filterBranch);
+
+  const emailablePayroll = filteredPayroll.filter(r => r.email);
+  const toggleSelect = (id: string) => {
+    setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  };
+  const selectAll = () => {
+    if (selected.size === emailablePayroll.length) setSelected(new Set());
+    else setSelected(new Set(emailablePayroll.map(r => r.employee_id)));
+  };
+
+  const sendPayslips = async () => {
+    const toSend = filteredPayroll.filter(r => selected.has(r.employee_id) && r.email);
+    if (toSend.length === 0) return;
+    setSending(true); setSendResults(null);
+
+    try {
+      const res = await fetch("/api/send-payslip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payslips: toSend.map(r => ({
+            employee_id: r.employee_id,
+            employee_name: r.employee_name,
+            email: r.email,
+            period_name: selectedPeriod?.period_name || "",
+            payroll_period_id: periodId,
+          })),
+        }),
+      });
+      const data = await res.json();
+      setSendResults(data);
+      if (data.sent > 0) setSelected(new Set());
+    } catch (err: any) {
+      setSendResults({ sent: 0, failed: selected.size, results: [{ error: err.message }] });
+    }
+    setSending(false);
+  };
 
   const totals = filteredPayroll.reduce((t, r) => ({
     count: t.count + 1, gross: t.gross + r.gross_salary, net: t.net + r.net_salary_due,
@@ -147,6 +207,22 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
               </select>
             </div>
           )}
+          {periodId && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-medium mb-1" style={{ color: "#636363" }}>Start Date</label>
+              <input type="date" value={startDate || selectedPeriod?.start_date || ""} onChange={(e) => setStartDate(e.target.value)}
+                className="px-4 py-2.5 rounded-lg text-[13px] min-w-[180px] outline-none"
+                style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }} />
+            </div>
+          )}
+          {periodId && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-medium mb-1" style={{ color: "#636363" }}>End Date</label>
+              <input type="date" value={cutoffDate || selectedPeriod?.end_date || ""} onChange={(e) => setCutoffDate(e.target.value)}
+                className="px-4 py-2.5 rounded-lg text-[13px] min-w-[180px] outline-none"
+                style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }} />
+            </div>
+          )}
           {periodId && !readOnly && (
             <button onClick={generatePayroll} disabled={generating}
               className="px-6 py-2.5 rounded-lg font-bold text-[13px]"
@@ -164,16 +240,26 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
       {/* Results */}
       {filteredPayroll.length > 0 && (
         <div className="chart-card flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="text-[13px] font-semibold" style={{ color: "#a3a3a3" }}>
               {selectedPeriod?.period_name} — {totals.count} employees
               {filterBranch !== "all" && ` • ${filterBranch}`}
+              {selected.size > 0 && <span style={{ color: "#22d3ee" }}> • {selected.size} selected</span>}
             </div>
-            <button onClick={downloadAllPayslips} disabled={downloading === "all"}
-              className="px-4 py-2 rounded-lg text-[12px] font-semibold"
-              style={{ background: "#22c55e", color: "#000", opacity: downloading === "all" ? 0.5 : 1 }}>
-              {downloading === "all" ? "⏳ Generating..." : `📄 Download All ${totals.count} Payslips`}
-            </button>
+            <div className="flex gap-2">
+              {selected.size > 0 && (
+                <button onClick={sendPayslips} disabled={sending}
+                  className="px-4 py-2 rounded-lg text-[12px] font-semibold"
+                  style={{ background: "#22d3ee", color: "#000", opacity: sending ? 0.5 : 1 }}>
+                  {sending ? "⏳ Sending..." : `📧 Email ${selected.size} Payslip${selected.size > 1 ? "s" : ""}`}
+                </button>
+              )}
+              <button onClick={downloadAllPayslips} disabled={downloading === "all"}
+                className="px-4 py-2 rounded-lg text-[12px] font-semibold"
+                style={{ background: "#22c55e", color: "#000", opacity: downloading === "all" ? 0.5 : 1 }}>
+                {downloading === "all" ? "⏳ Generating..." : `📄 Download All ${totals.count} Payslips`}
+              </button>
+            </div>
           </div>
 
           {/* Summary cards */}
@@ -185,11 +271,37 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
             <MiniCard label="Advances" value={fmtDec(totals.advances)} color="#fbbf24" />
           </div>
 
+          {/* Send results */}
+          {sendResults && (
+            <div className="px-4 py-3 rounded-lg text-[12px]" style={{ background: sendResults.sent > 0 ? "#22c55e10" : "#f8717110", border: `1px solid ${sendResults.sent > 0 ? "#22c55e30" : "#f8717130"}` }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span style={{ color: "#4ade80" }}>✅ {sendResults.sent} sent</span>
+                  {sendResults.failed > 0 && <span style={{ color: "#f87171" }}> • ❌ {sendResults.failed} failed</span>}
+                </div>
+                <button onClick={() => setSendResults(null)} className="text-[10px]" style={{ color: "#636363" }}>✕ Close</button>
+              </div>
+              {sendResults.failed > 0 && sendResults.results && (
+                <div className="mt-2 flex flex-col gap-1">
+                  {sendResults.results.filter((r: any) => r.status === "failed").map((r: any, i: number) => (
+                    <div key={i} className="text-[11px]" style={{ color: "#f87171" }}>
+                      {r.name}: {r.error}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Payroll table */}
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 2px" }}>
               <thead>
                 <tr>
+                  <th className="px-3 py-2 border-b" style={{ borderColor: "#2a2a2a", width: "40px" }}>
+                    <input type="checkbox" checked={selected.size > 0 && selected.size === emailablePayroll.length}
+                      onChange={selectAll} style={{ cursor: "pointer", accentColor: "#22d3ee" }} />
+                  </th>
                   {["Employee", "Branch", "Gross", "Bonus", "NAPSA", "NHIMA", "PAYE", "Shortages", "Advances", "Fines", "Net Pay", "Payslip"].map((h) => (
                     <th key={h} className="px-3 py-2 text-[10px] uppercase tracking-wider font-semibold border-b whitespace-nowrap"
                       style={{ textAlign: ["Employee", "Branch"].includes(h) ? "left" : h === "Payslip" ? "center" : "right", color: "#636363", borderColor: "#2a2a2a" }}>{h}</th>
@@ -198,8 +310,19 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
               </thead>
               <tbody>
                 {filteredPayroll.sort((a, b) => a.branch_name.localeCompare(b.branch_name) || a.employee_name.localeCompare(b.employee_name)).map((r, i) => (
-                  <tr key={i} className="row-hover">
-                    <td className="px-3 py-2.5 text-[12px] font-semibold" style={{ color: "#f5f5f5" }}>{r.employee_name}</td>
+                  <tr key={i} className="row-hover" style={{ background: selected.has(r.employee_id) ? "#22d3ee08" : undefined }}>
+                    <td className="px-3 py-2.5 text-center">
+                      {r.email ? (
+                        <input type="checkbox" checked={selected.has(r.employee_id)} onChange={() => toggleSelect(r.employee_id)}
+                          style={{ cursor: "pointer", accentColor: "#22d3ee" }} />
+                      ) : (
+                        <span style={{ color: "#333", fontSize: "10px" }}>—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12px] font-semibold" style={{ color: "#f5f5f5" }}>
+                      {r.employee_name}
+                      {!r.email && <span className="ml-1 text-[9px]" style={{ color: "#636363" }}>(no email)</span>}
+                    </td>
                     <td className="px-3 py-2.5 text-[11px]" style={{ color: "#636363" }}>{r.branch_name}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: "#f5f5f5" }}>{fmtDec(r.gross_salary)}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-[12px]" style={{ color: r.bonus > 0 ? "#4ade80" : "#636363" }}>{r.bonus > 0 ? "+" + fmt(r.bonus) : "—"}</td>
@@ -220,6 +343,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
                   </tr>
                 ))}
                 <tr style={{ borderTop: "2px solid #22c55e" }}>
+                  <td></td>
                   <td className="px-3 py-3 font-bold text-[12px]" style={{ color: "#22c55e" }}>TOTAL</td>
                   <td></td>
                   <td className="px-3 py-3 text-right font-mono font-bold text-[12px]" style={{ color: "#22c55e" }}>{fmtDec(totals.gross)}</td>

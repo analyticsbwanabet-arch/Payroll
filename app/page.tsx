@@ -8,7 +8,7 @@ import { NetPayChart, DistributionChart, DeductionsChart } from "@/components/Ch
 
 function fmt(n: number) { return "K" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-interface Period { id: string; period_name: string; }
+interface Period { id: string; period_name: string; start_date: string; }
 interface BranchSummary {
   branch: string; employees: number; gross: number; net: number;
   napsa: number; nhima: number; paye: number; shortages: number; advances: number; fines: number; extraShifts: number;
@@ -31,7 +31,7 @@ export default function OverviewPage() {
 
   useEffect(() => {
     const loadPeriods = async () => {
-      const { data } = await supabase.from("payroll_periods").select("id, period_name").order("start_date", { ascending: false });
+      const { data } = await supabase.from("payroll_periods").select("id, period_name, start_date").order("start_date", { ascending: false });
       const list = data || [];
       setPeriods(list);
       if (list.length > 0) setSelectedPeriod(list[0].id);
@@ -63,6 +63,26 @@ export default function OverviewPage() {
     const branchMap: Record<string, string> = {};
     (branchData || []).forEach((b: any) => branchMap[b.id] = b.name);
 
+    // Get live operational data from daily logs
+    const period = periods?.find((p: any) => p.id === selectedPeriod);
+    let dailyAgg: Record<string, { shortages: number; advances: number; fines: number; extraShifts: number }> = {};
+    if (period) {
+      const { data: summaries } = await supabase
+        .from("monthly_employee_summary")
+        .select("employee_id, total_shortages, total_advances, total_fines, total_extra_shifts")
+        .eq("month", period.start_date);
+      if (summaries) {
+        summaries.forEach((s: any) => {
+          dailyAgg[s.employee_id] = {
+            shortages: +(s.total_shortages || 0),
+            advances: +(s.total_advances || 0),
+            fines: +(s.total_fines || 0),
+            extraShifts: +(s.total_extra_shifts || 0),
+          };
+        });
+      }
+    }
+
     const agg: Record<string, BranchSummary> = {};
     records.forEach((r: any) => {
       const emp = empMap[r.employee_id];
@@ -74,16 +94,17 @@ export default function OverviewPage() {
       const bn = branchMap[bid] || "Unknown";
       if (!agg[bn]) agg[bn] = { branch: bn, employees: 0, gross: 0, net: 0, napsa: 0, nhima: 0, paye: 0, shortages: 0, advances: 0, fines: 0, extraShifts: 0 };
       const s = agg[bn];
+      const dl = dailyAgg[r.employee_id];
       s.employees++;
       s.gross += +(r.gross_salary || 0);
       s.net += +(r.net_salary_due || 0);
       s.napsa += +(r.napsa_employee || 0);
       s.nhima += +(r.nhima_employee || 0);
       s.paye += +(r.paye_tax || 0);
-      s.shortages += +(r.shortage_amount || 0);
-      s.advances += +(r.advances || 0);
-      s.fines += +(r.fines || 0);
-      s.extraShifts += +(r.extra_shift_total || 0);
+      s.shortages += dl ? dl.shortages : +(r.shortage_amount || 0);
+      s.advances += dl ? dl.advances : +(r.advances || 0);
+      s.fines += dl ? dl.fines : +(r.fines || 0);
+      s.extraShifts += dl ? dl.extraShifts : +(r.extra_shift_total || 0);
     });
 
     setAllBranches(Object.values(agg).sort((a, b) => a.branch.localeCompare(b.branch)));

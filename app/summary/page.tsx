@@ -67,7 +67,7 @@ export default function SummaryPage() {
 
     const { data: summaries } = await supabase
       .from("monthly_employee_summary")
-      .select("employee_id, days_worked, days_present, days_late, days_absent, days_leave, night_shift_count, total_extra_shifts, total_shortages, total_advances, total_fines, total_bonuses")
+      .select("employee_id, days_worked, night_shift_count, total_extra_shifts, days_absent, protected_leave_days, total_shortages, total_advances, total_fines, total_bonuses")
       .eq("month", period.start_date);
 
     if (!summaries || summaries.length === 0) { setRecords([]); setLoading(false); return; }
@@ -99,9 +99,10 @@ export default function SummaryPage() {
         };
       }
       const r = agg[s.employee_id];
-      r.days_worked += +(s.days_worked || 0); r.days_present += +(s.days_present || 0);
-      r.days_late += +(s.days_late || 0); r.days_absent += +(s.days_absent || 0);
-      r.days_leave += +(s.days_leave || 0); r.night_shifts += +(s.night_shift_count || 0);
+      r.days_worked += +(s.days_worked || 0);
+      r.days_absent += +(s.days_absent || 0);
+      r.days_leave += +(s.protected_leave_days || 0);
+      r.night_shifts += +(s.night_shift_count || 0);
       r.extra_shifts += +(s.total_extra_shifts || 0); r.shortages += +(s.total_shortages || 0);
       r.advances += +(s.total_advances || 0); r.fines += +(s.total_fines || 0);
       r.bonuses += +(s.total_bonuses || 0);
