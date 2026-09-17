@@ -8,7 +8,7 @@ export async function getEmployeeContacts(
     .from("employees")
     .select(
       `id, full_name, phone, email, mobile_money_number, home_address,
-       nrc_number, tpin, bank_name, bank_account_number, social_security_number,
+       nrc_number, tpin, nhima_number, date_of_birth, bank_name, bank_account_number, social_security_number,
        emergency_contact_name, emergency_contact_phone, date_started, branch_id`
     )
     .eq("employment_status", "active");
@@ -29,6 +29,8 @@ export async function getEmployeeContacts(
     home_address: e.home_address,
     nrc_number: e.nrc_number,
     tpin: e.tpin,
+    nhima_number: e.nhima_number,
+    date_of_birth: e.date_of_birth,
     bank_name: e.bank_name,
     bank_account_number: e.bank_account_number,
     social_security_number: e.social_security_number,

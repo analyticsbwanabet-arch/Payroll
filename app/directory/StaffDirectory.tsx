@@ -35,7 +35,7 @@ function StaffCard({ c }: { c: EnrichedContact }) {
   const hasEmergency = c.emergency_contact_name || c.emergency_contact_phone;
 
   // Calculate completeness
-  const fields = [c.phone, c.email, c.mobile_money_number, c.home_address, c.emergency_contact_phone];
+  const fields = [c.phone, c.email, c.mobile_money_number, c.home_address, c.emergency_contact_phone, c.nrc_number, c.tpin, c.nhima_number, c.date_of_birth, c.social_security_number];
   const filled = fields.filter(Boolean).length;
   const pct = Math.round((filled / fields.length) * 100);
 
@@ -96,10 +96,12 @@ function StaffCard({ c }: { c: EnrichedContact }) {
         )}
 
         {/* IDs */}
-        {(c.nrc_number || c.tpin) && (
+        {(c.nrc_number || c.tpin || c.nhima_number || c.date_of_birth) && (
           <div style={{ marginBottom: 8 }}>
             <InfoRow icon="🪪" label="NRC" value={c.nrc_number} />
             <InfoRow icon="🏛️" label="TPIN" value={c.tpin} />
+            <InfoRow icon="🏥" label="NHIMA" value={c.nhima_number} />
+            <InfoRow icon="🎂" label="DOB" value={c.date_of_birth ? new Date(c.date_of_birth + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null} />
           </div>
         )}
 

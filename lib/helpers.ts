@@ -48,6 +48,8 @@ export interface EmployeeContact {
   home_address: string | null;
   nrc_number: string | null;
   tpin: string | null;
+  nhima_number: string | null;
+  date_of_birth: string | null;
   bank_name: string | null;
   bank_account_number: string | null;
   social_security_number: string | null;

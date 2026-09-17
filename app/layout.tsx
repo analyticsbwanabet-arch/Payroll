@@ -8,6 +8,10 @@ import { headers } from "next/headers";
 export const metadata: Metadata = {
   title: "BwanaBet Payroll",
   description: "Payroll management system for BwanaBet Zambia",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
