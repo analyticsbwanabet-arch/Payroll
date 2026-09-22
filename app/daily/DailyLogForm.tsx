@@ -22,6 +22,7 @@ const ATTENDANCE_OPTIONS = [
   { value: "sick_authorised", label: "Sick Authorised", color: "#c084fc", icon: "🏥" },
   { value: "absent_no_reason", label: "Absent No Reason", color: "#ef4444", icon: "❌" },
   { value: "maternity_leave", label: "Maternity Leave", color: "#f472b6", icon: "🤰" },
+  { value: "mothers_day", label: "MD (Mother's Day)", color: "#ec4899", icon: "🌸" },
   { value: "off_day", label: "Off Day", color: "#64748b", icon: "😴" },
   { value: "on_leave", label: "On Leave", color: "#8b5cf6", icon: "🏖" },
   { value: "on_leave_no_pay", label: "On Leave No Pay", color: "#a3a3a3", icon: "🚫" },
