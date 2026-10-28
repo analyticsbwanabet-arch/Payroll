@@ -139,18 +139,19 @@ export async function generatePayslipPDF(data: PayslipData): Promise<jsPDF> {
   // === SIDE BY SIDE: EARNINGS & DEDUCTIONS ===
   const halfW = (contentW - 4) / 2;
 
-  const isManagement = data.branch_name === "Management";
+  // Management with job allowance: show Job Allowance instead of Transport/Lunch
+  // If on Management branch but has transport/lunch (e.g. Ruth), show those instead
+  const hasJobAllowance = data.job_allowance && data.job_allowance > 0;
+  const isManagementStructure = data.branch_name === "Management" && hasJobAllowance;
   const earningsData: any[] = [
     ["Basic Pay", fmt(data.basic_pay)],
     ["Housing Allowance", fmt(data.housing_allowance)],
   ];
-  if (isManagement) {
-    if (data.job_allowance && data.job_allowance > 0) {
-      earningsData.push(["Job Allowance", fmt(data.job_allowance)]);
-    }
+  if (isManagementStructure) {
+    earningsData.push(["Job Allowance", fmt(data.job_allowance!)]);
   } else {
-    earningsData.push(["Transport Allowance", fmt(data.transport_allowance)]);
-    earningsData.push(["Lunch Allowance", fmt(data.lunch_allowance)]);
+    if (data.transport_allowance > 0) earningsData.push(["Transport Allowance", fmt(data.transport_allowance)]);
+    if (data.lunch_allowance > 0) earningsData.push(["Lunch Allowance", fmt(data.lunch_allowance)]);
   }
   if (data.extra_shift_total > 0) earningsData.push(["Extra Shifts (" + data.extra_shifts_count + ")", fmt(data.extra_shift_total)]);
   if (data.bonus > 0) earningsData.push(["Bonus", fmt(data.bonus)]);
