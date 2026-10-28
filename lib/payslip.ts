@@ -19,9 +19,12 @@ export interface PayslipData {
   shortage_amount: number; advances: number; fines: number;
   absent_days: number; absence_deduction: number; other_deductions: number;
   net_salary_due: number; comments: string | null; leave?: LeaveBalance;
+  job_allowance?: number;
   // Legacy fields kept for compatibility
   bank_name?: string; bank_account_number?: string;
 }
+
+const MANAGEMENT_POSITIONS = ['operations_manager', 'systems_architect', 'supervisor'];
 
 const fmt = (n: number) =>
   "K" + n.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -136,12 +139,19 @@ export async function generatePayslipPDF(data: PayslipData): Promise<jsPDF> {
   // === SIDE BY SIDE: EARNINGS & DEDUCTIONS ===
   const halfW = (contentW - 4) / 2;
 
+  const isManagement = MANAGEMENT_POSITIONS.includes(data.position) || data.branch_name === "Management";
   const earningsData: any[] = [
     ["Basic Pay", fmt(data.basic_pay)],
     ["Housing Allowance", fmt(data.housing_allowance)],
-    ["Transport Allowance", fmt(data.transport_allowance)],
-    ["Lunch Allowance", fmt(data.lunch_allowance)],
   ];
+  if (isManagement) {
+    if (data.job_allowance && data.job_allowance > 0) {
+      earningsData.push(["Job Allowance", fmt(data.job_allowance)]);
+    }
+  } else {
+    earningsData.push(["Transport Allowance", fmt(data.transport_allowance)]);
+    earningsData.push(["Lunch Allowance", fmt(data.lunch_allowance)]);
+  }
   if (data.extra_shift_total > 0) earningsData.push(["Extra Shifts (" + data.extra_shifts_count + ")", fmt(data.extra_shift_total)]);
   if (data.bonus > 0) earningsData.push(["Bonus", fmt(data.bonus)]);
   const totalEarnings = data.gross_salary + data.extra_shift_total + data.bonus;

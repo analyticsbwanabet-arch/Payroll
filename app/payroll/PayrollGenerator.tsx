@@ -9,7 +9,7 @@ interface FullPayrollRecord {
   employee_id: string; employee_name: string; position: string; branch_name: string; email: string;
   nrc_number: string; tpin: string; ssn: string; bank_name: string; bank_account_number: string; mobile_number: string; date_started: string;
   basic_pay: number; housing_allowance: number; transport_allowance: number; lunch_allowance: number;
-  basic_salary: number; gross_salary: number; net_salary_due: number;
+  job_allowance: number; basic_salary: number; gross_salary: number; net_salary_due: number;
   napsa_employee: number; napsa_employer: number; nhima_employee: number; nhima_employer: number; paye_tax: number;
   extra_shifts_count: number; extra_shift_total: number; bonus: number;
   shortage_amount: number; advances: number; fines: number;
@@ -50,7 +50,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
     const empIds = Array.from(new Set(records.map((r: any) => r.employee_id)));
     let employees: any[] = [];
     for (let i = 0; i < empIds.length; i += 40) {
-      const { data } = await supabase.from("employees").select("id, full_name, position, basic_pay, housing_allowance, transport_allowance, lunch_allowance, branch_id, employment_status, email, nrc_number, tpin, social_security_number, bank_name, bank_account_number, mobile_money_number, phone, date_started").in("id", empIds.slice(i, i + 40));
+      const { data } = await supabase.from("employees").select("id, full_name, position, basic_pay, housing_allowance, transport_allowance, lunch_allowance, job_allowance, branch_id, employment_status, email, nrc_number, tpin, social_security_number, bank_name, bank_account_number, mobile_money_number, phone, date_started").in("id", empIds.slice(i, i + 40));
       if (data) employees = employees.concat(data);
     }
     const empMap: Record<string, any> = {};
@@ -85,6 +85,7 @@ export default function PayrollGenerator({ periods }: { periods: Period[] }) {
         housing_allowance: +(empMap[r.employee_id]?.housing_allowance || r.housing_allowance || 0),
         transport_allowance: +(empMap[r.employee_id]?.transport_allowance || r.transport_allowance || 0),
         lunch_allowance: +(empMap[r.employee_id]?.lunch_allowance || r.lunch_allowance || 0),
+        job_allowance: +(empMap[r.employee_id]?.job_allowance || r.job_allowance || 0),
         basic_salary: +(empMap[r.employee_id]?.basic_pay || r.basic_pay || r.gross_salary || 0),
         gross_salary: +(r.gross_salary || 0), net_salary_due: +(r.net_salary_due || 0),
         napsa_employee: +(r.napsa_employee || 0), napsa_employer: +(r.napsa_employer || 0),
