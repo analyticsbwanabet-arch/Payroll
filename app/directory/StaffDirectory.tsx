@@ -30,7 +30,7 @@ function PositionBadge({ position }: { position: string }) {
 
 function StaffCard({ c }: { c: EnrichedContact }) {
   const hasContact = c.phone || c.email || c.mobile_money_number;
-  const hasPersonal = c.home_address || c.nrc_number || c.tpin || c.date_started;
+  const hasPersonal = c.home_address || c.nrc_number || c.tpin || c.date_started || c.gender;
   const hasBank = c.bank_name || c.bank_account_number || c.social_security_number;
   const hasEmergency = c.emergency_contact_name || c.emergency_contact_phone;
 
@@ -92,6 +92,13 @@ function StaffCard({ c }: { c: EnrichedContact }) {
         {c.home_address && (
           <div style={{ marginBottom: 8 }}>
             <InfoRow icon="📍" label="Address" value={c.home_address} />
+          </div>
+        )}
+
+        {/* Gender */}
+        {c.gender && (
+          <div style={{ marginBottom: 8 }}>
+            <InfoRow icon="👤" label="Gender" value={c.gender.charAt(0).toUpperCase() + c.gender.slice(1)} />
           </div>
         )}
 
