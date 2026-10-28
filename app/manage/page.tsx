@@ -43,6 +43,7 @@ export default function ManagePage() {
     full_name: "", phone: "", mobile_money_number: "", email: "", home_address: "",
     emergency_contact_name: "", emergency_contact_phone: "", nrc_number: "", tpin: "",
     social_security_number: "", branch_id: "", position: "cashier", date_started: new Date().toISOString().split("T")[0],
+    gender: "",
   });
 
   // Transfer form
@@ -95,6 +96,7 @@ export default function ManagePage() {
       nrc_number: newEmp.nrc_number || null,
       tpin: newEmp.tpin || null,
       social_security_number: newEmp.social_security_number || null,
+      gender: newEmp.gender || null,
       branch_id: newEmp.branch_id,
       department_id: deptData?.id || null,
       position: newEmp.position,
@@ -114,7 +116,7 @@ export default function ManagePage() {
       setMsg({ type: "ok", text: `${newEmp.full_name} added successfully!` });
       setNewEmp({ full_name: "", phone: "", mobile_money_number: "", email: "", home_address: "",
         emergency_contact_name: "", emergency_contact_phone: "", nrc_number: "", tpin: "",
-        social_security_number: "", branch_id: "", position: "cashier", date_started: new Date().toISOString().split("T")[0] });
+        social_security_number: "", branch_id: "", position: "cashier", date_started: new Date().toISOString().split("T")[0], gender: "" });
       // Refresh employees
       const { data: e } = await supabase.from("employees").select("id, full_name, branch_id, position").eq("employment_status", "active").order("full_name");
       const branchMap: Record<string, string> = {};
@@ -225,6 +227,15 @@ export default function ManagePage() {
               <select value={newEmp.position} onChange={e => setNewEmp({ ...newEmp, position: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none" style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }}>
                 {POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label} (K{p.pay})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-medium mb-1" style={{ color: "#636363" }}>Gender</label>
+              <select value={newEmp.gender} onChange={e => setNewEmp({ ...newEmp, gender: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none" style={{ border: "1px solid #2a2a2a", background: "#0a0a0a", color: "#f5f5f5" }}>
+                <option value="">Select gender...</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
               </select>
             </div>
             <Field label="Phone" value={newEmp.phone} onChange={v => setNewEmp({ ...newEmp, phone: v })} placeholder="260..." />

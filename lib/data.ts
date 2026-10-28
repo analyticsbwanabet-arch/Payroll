@@ -9,7 +9,7 @@ export async function getEmployeeContacts(
     .select(
       `id, full_name, phone, email, mobile_money_number, home_address,
        nrc_number, tpin, nhima_number, date_of_birth, bank_name, bank_account_number, social_security_number,
-       emergency_contact_name, emergency_contact_phone, date_started, branch_id`
+       emergency_contact_name, emergency_contact_phone, date_started, branch_id, gender`
     )
     .eq("employment_status", "active");
 
@@ -37,6 +37,7 @@ export async function getEmployeeContacts(
     emergency_contact_name: e.emergency_contact_name,
     emergency_contact_phone: e.emergency_contact_phone,
     date_started: e.date_started,
+    gender: e.gender,
   }));
 }
 

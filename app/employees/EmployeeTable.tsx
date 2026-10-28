@@ -52,7 +52,7 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
   }
 
   const hasContact = contact.phone || contact.email || contact.mobile_money_number;
-  const hasPersonal = contact.home_address || contact.nrc_number || contact.tpin || contact.date_started;
+  const hasPersonal = contact.home_address || contact.nrc_number || contact.tpin || contact.date_started || contact.gender;
   const hasBank = contact.bank_name || contact.bank_account_number || contact.social_security_number;
   const hasEmergency = contact.emergency_contact_name || contact.emergency_contact_phone;
 
@@ -76,6 +76,7 @@ function DetailPanel({ contact }: { contact: EmployeeContact | undefined }) {
             🏠 Personal
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 32px" }}>
+            <InfoItem icon="👤" label="Gender" value={contact.gender ? contact.gender.charAt(0).toUpperCase() + contact.gender.slice(1) : null} />
             <InfoItem icon="📍" label="Home Address" value={contact.home_address} />
             <InfoItem icon="🪪" label="NRC Number" value={contact.nrc_number} />
             <InfoItem icon="🏛️" label="TPIN" value={contact.tpin} />

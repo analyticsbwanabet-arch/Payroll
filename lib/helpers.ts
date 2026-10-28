@@ -56,6 +56,7 @@ export interface EmployeeContact {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   date_started: string | null;
+  gender: string | null;
 }
 
 export interface BranchSummary {
