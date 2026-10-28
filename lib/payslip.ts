@@ -24,7 +24,7 @@ export interface PayslipData {
   bank_name?: string; bank_account_number?: string;
 }
 
-const MANAGEMENT_POSITIONS = ['operations_manager', 'systems_architect', 'supervisor'];
+// Management = employees on the "Management" branch only
 
 const fmt = (n: number) =>
   "K" + n.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -139,7 +139,7 @@ export async function generatePayslipPDF(data: PayslipData): Promise<jsPDF> {
   // === SIDE BY SIDE: EARNINGS & DEDUCTIONS ===
   const halfW = (contentW - 4) / 2;
 
-  const isManagement = MANAGEMENT_POSITIONS.includes(data.position) || data.branch_name === "Management";
+  const isManagement = data.branch_name === "Management";
   const earningsData: any[] = [
     ["Basic Pay", fmt(data.basic_pay)],
     ["Housing Allowance", fmt(data.housing_allowance)],
