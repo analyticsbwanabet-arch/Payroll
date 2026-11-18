@@ -13,7 +13,7 @@ interface Period {
 }
 
 export default function PayrollPage() {
-  const { isSuperAdmin, loading: authLoading } = useAuth();
+  const { isSuperAdmin, isOwner, loading: authLoading } = useAuth();
   const [periods, setPeriods] = useState<Period[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,12 +38,12 @@ export default function PayrollPage() {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!isSuperAdmin || !isOwner) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <div className="text-4xl">🔒</div>
         <h2 className="text-lg font-bold text-[--text]">Access Restricted</h2>
-        <p className="text-[13px] text-[--text-muted]">Payroll is only accessible to Admins.</p>
+        <p className="text-[13px] text-[--text-muted]">Payroll is only accessible to the owner.</p>
       </div>
     );
   }
