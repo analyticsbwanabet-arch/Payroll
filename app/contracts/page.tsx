@@ -122,7 +122,7 @@ export default function ContractsPage() {
       const probationEnd = started ? new Date(started) : null;
       if (probationEnd) probationEnd.setMonth(probationEnd.getMonth() + PROBATION_MONTHS);
       const probationDone = !!probationEnd && probationEnd <= today;
-      const needsContract = probationDone && status !== "signed";
+      const needsContract = probationDone && status === "none";
       return { emp: e, contract: c, status, daysEmployed, probationDone, needsContract };
     });
   }, [employees, contracts]);
@@ -228,7 +228,7 @@ export default function ContractsPage() {
             </select>
             <select value={fProbation} onChange={e => setFProbation(e.target.value as any)} className="px-3 py-2 rounded-lg text-[13px] outline-none" style={inputStyle}>
               <option value="">All probation states</option>
-              <option value="needs">Probation done, no signed contract</option>
+              <option value="needs">Probation done, no contract sent</option>
               <option value="done">Probation completed</option>
               <option value="on">Still on probation</option>
             </select>
@@ -286,7 +286,7 @@ export default function ContractsPage() {
               </tbody>
             </table>
           </div>
-          <p className="text-[11px]" style={{ color: "#636363" }}>Probation is {PROBATION_MONTHS} months from start date. "Needs contract" = probation completed and no signed contract on file. Quick send uses today as the start date and a 1 year term; use the Send Contract tab to set different dates.</p>
+          <p className="text-[11px]" style={{ color: "#636363" }}>Probation is {PROBATION_MONTHS} months from start date. "Needs contract" = probation completed and no contract has ever been sent. Quick send uses today as the start date and a 1 year term; use the Send Contract tab to set different dates.</p>
         </>
       )}
 
