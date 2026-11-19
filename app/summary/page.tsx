@@ -1,17 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { supabase, useAuth } from "@/lib/auth-context";
 
 interface SummaryRecord {
-  employee_id: string; employee_name: string; branch_name: string; position: string;
+  employee_id: string; employee_name: string; branch_name: string; branch_id: string; position: string;
   days_worked: number; days_present: number; days_late: number; days_absent: number;
   days_leave: number; night_shifts: number; extra_shifts: number;
   shortages: number; advances: number; fines: number; bonuses: number;
 }
 
 interface DayDetail {
-  date: string; attendance: string; label: string; color: string;
+  date: string; branch_id: string; attendance: string; label: string; color: string;
   shortage: number; advance: number; fine: number; bonus: number; extra_shifts: number; comments: string;
 }
 
@@ -37,6 +38,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function SummaryPage() {
+  const router = useRouter();
   const { isSuperAdmin, allowedBranchIds, loading: authLoading } = useAuth();
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("");
@@ -93,7 +95,7 @@ export default function SummaryPage() {
       if (!agg[s.employee_id]) {
         agg[s.employee_id] = {
           employee_id: s.employee_id, employee_name: emp.full_name,
-          branch_name: branchMap[emp.branch_id] || "Unknown", position: emp.position,
+          branch_name: branchMap[emp.branch_id] || "Unknown", branch_id: emp.branch_id, position: emp.position,
           days_worked: 0, days_present: 0, days_late: 0, days_absent: 0, days_leave: 0,
           night_shifts: 0, extra_shifts: 0, shortages: 0, advances: 0, fines: 0, bonuses: 0,
         };
@@ -124,7 +126,7 @@ export default function SummaryPage() {
 
     const { data } = await supabase
       .from("daily_logs")
-      .select("log_date, attendance_status, shortage_amount, advance_amount, fine_amount, bonus_amount, extra_shifts_worked, comments")
+      .select("log_date, branch_id, attendance_status, shortage_amount, advance_amount, fine_amount, bonus_amount, extra_shifts_worked, comments")
       .eq("employee_id", empId)
       .gte("log_date", period.start_date)
       .lte("log_date", period.end_date)
@@ -132,6 +134,7 @@ export default function SummaryPage() {
 
     setDayDetails((data || []).map((d: any) => ({
       date: d.log_date,
+      branch_id: d.branch_id,
       attendance: d.attendance_status,
       label: STATUS_LABELS[d.attendance_status]?.label || d.attendance_status,
       color: STATUS_LABELS[d.attendance_status]?.color || "#636363",
@@ -250,7 +253,7 @@ export default function SummaryPage() {
                   {dayDetails.map((d, i) => {
                     const hasAmount = d.shortage > 0 || d.advance > 0 || d.fine > 0 || d.bonus > 0;
                     return (
-                      <tr key={i} style={{ background: hasAmount ? "#fbbf2408" : undefined }}>
+                      <tr key={i} className="row-hover" title="Open this day in the Daily Log" onClick={() => router.push(`/daily?branch=${d.branch_id || selectedRecord.branch_id}&date=${d.date}&employee=${selectedRecord.employee_id}`)} style={{ background: hasAmount ? "#fbbf2408" : undefined, cursor: "pointer" }}>
                         <td className="px-3 py-2 text-[12px] whitespace-nowrap" style={{ color: "#f5f5f5" }}>{formatDate(d.date)}</td>
                         <td className="px-3 py-2">
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ background: d.color + "20", color: d.color }}>{d.label}</span>

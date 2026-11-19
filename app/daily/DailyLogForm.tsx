@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth, supabase } from "@/lib/auth-context";
 
 interface Branch { id: string; name: string; }
@@ -59,9 +60,13 @@ function shortEmail(email: string | null) {
 
 export default function DailyLogForm() {
   const { allowedBranchIds, isSuperAdmin, readOnly, email: userEmail, displayName, logName, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const qpBranch = searchParams.get("branch") || "";
+  const qpDate = searchParams.get("date") || "";
+  const qpEmployee = searchParams.get("employee") || "";
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [branchId, setBranchId] = useState("");
-  const [logDate, setLogDate] = useState(today());
+  const [branchId, setBranchId] = useState(qpBranch);
+  const [logDate, setLogDate] = useState(/^\d{4}-\d{2}-\d{2}$/.test(qpDate) ? qpDate : today());
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [schedule, setSchedule] = useState<Record<string, ScheduleInfo>>({});
   const [entries, setEntries] = useState<Record<string, LogEntry>>({});
@@ -239,7 +244,8 @@ export default function DailyLogForm() {
       const { data } = await query;
       const list = data || [];
       setBranches(list);
-      if (list.length === 1) setBranchId(list[0].id);
+      if (qpBranch && list.some((b: Branch) => b.id === qpBranch)) setBranchId(qpBranch);
+      else if (list.length === 1) setBranchId(list[0].id);
     };
     loadBranches();
   }, [allowedBranchIds, isSuperAdmin, authLoading]);
@@ -467,10 +473,11 @@ export default function DailyLogForm() {
                 const schedLabel = sched?.schedule_type === "3on2off" ? "3/2" : "2/2";
 
                 return (
-                  <tr key={emp.id} className="transition-colors"
-                    style={{ background: entry.saved ? "transparent" : "#f59e0b08", opacity: !isOn && entry.attendance_status === "off_day" ? 0.55 : 1 }}
+                  <tr key={emp.id} id={`emp-${emp.id}`} className="transition-colors"
+                    ref={emp.id === qpEmployee ? (el) => { if (el && !el.dataset.scrolled) { el.dataset.scrolled = "1"; setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 150); } } : undefined}
+                    style={{ background: emp.id === qpEmployee ? "#facc1518" : entry.saved ? "transparent" : "#f59e0b08", outline: emp.id === qpEmployee ? "1px solid #facc15" : undefined, opacity: !isOn && entry.attendance_status === "off_day" ? 0.55 : 1 }}
                     onMouseOver={(e) => { e.currentTarget.style.background = "var(--card-hover)"; e.currentTarget.style.opacity = "1"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = entry.saved ? "transparent" : "#f59e0b08"; e.currentTarget.style.opacity = (!isOn && entry.attendance_status === "off_day") ? "0.55" : "1"; }}>
+                    onMouseOut={(e) => { e.currentTarget.style.background = emp.id === qpEmployee ? "#facc1518" : entry.saved ? "transparent" : "#f59e0b08"; e.currentTarget.style.opacity = (!isOn && entry.attendance_status === "off_day") ? "0.55" : "1"; }}>
 
                     <td className="px-1 py-2.5 text-center w-8">
                       {entry.saved ? <span title="Saved" className="text-[--green] text-[11px]">●</span> : <span title="Unsaved" className="text-[--accent] text-[11px]">○</span>}
